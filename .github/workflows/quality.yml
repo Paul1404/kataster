@@ -47,3 +47,4 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - run: docker build --tag kataster:ci .
+      - run: docker run --rm --entrypoint sh kataster:ci -c 'test -f scripts/create-operator.ts'
