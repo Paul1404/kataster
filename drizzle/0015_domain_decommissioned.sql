@@ -1,0 +1,1 @@
+ALTER TABLE "domains" ADD COLUMN "decommissioned" boolean DEFAULT false NOT NULL;

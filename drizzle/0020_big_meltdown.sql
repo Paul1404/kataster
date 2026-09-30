@@ -1,0 +1,1 @@
+DROP TABLE "ssm_hosts" CASCADE;

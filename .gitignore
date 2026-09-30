@@ -1,0 +1,20 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+.nitro
+.tanstack
+.output
+.vinxi
+routeTree.gen.ts
+*.log
+
+# Machine-local Codex MCP credentials. Never commit plaintext bearer tokens.
+.codex/config.toml
+
+# Agent worktrees (temporary, own git repos)
+.claude/worktrees/

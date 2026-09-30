@@ -1,0 +1,6 @@
+# Build config only. Per-service deploy settings (start command, healthcheck,
+# preDeployCommand) are set on each service instance so the app and worker can
+# differ while sharing one image. Config-as-code here would otherwise apply to
+# both services and override those per-service settings.
+[build]
+builder = "dockerfile"

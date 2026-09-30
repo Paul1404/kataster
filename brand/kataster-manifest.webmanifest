@@ -1,0 +1,33 @@
+{
+  "name": "Kataster",
+  "short_name": "Kataster",
+  "description": "Register für Objekte, Kunden und Abrechnung",
+  "lang": "de",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0B1422",
+  "background_color": "#0B1422",
+  "icons": [
+    {
+      "src": "/kataster-favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/kataster-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/kataster-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "/kataster-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

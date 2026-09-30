@@ -1,0 +1,1 @@
+CREATE INDEX "mail_events_ingested_idx" ON "mail_events" USING btree ("ingested_at");

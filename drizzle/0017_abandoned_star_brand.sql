@@ -1,0 +1,1 @@
+ALTER TABLE "cost_allocations" ADD COLUMN "auto" boolean DEFAULT false NOT NULL;
