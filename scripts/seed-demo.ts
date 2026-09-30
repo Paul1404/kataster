@@ -22,8 +22,13 @@ async function main() {
   }
   const period = new Date().toISOString().slice(0, 7);
   await db.transaction(async (tx) => {
-    const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` }).from(customers);
-    if (count) throw new Error("The demo register must be empty.");
+    const occupied = await tx.execute<{ present: boolean }>(sql`
+      select exists(select 1 from ${customers})
+        or exists(select 1 from ${resources})
+        or exists(select 1 from ${assets})
+        or exists(select 1 from ${providerCosts}) as present
+    `);
+    if (occupied.rows[0]?.present) throw new Error("The demo register must be empty.");
     const names = [
       "Kulturhaus Musterstadt",
       "Sportverein Beispielhausen",
@@ -43,6 +48,7 @@ async function main() {
         amountCents: 28400,
       })
       .returning();
+    if (!poolCost) throw new Error("Demo cost pool was not created.");
     for (const [i, name] of names.entries()) {
       const [customer] = await tx
         .insert(customers)
@@ -54,6 +60,7 @@ async function main() {
           tags: ["Demo", i % 2 ? "Gewerbe" : "Verein"],
         })
         .returning();
+      if (!customer) throw new Error("Demo customer was not created.");
       const types = ["domain", "mail_domain", "container", "mailbox"] as const;
       for (const [j, type] of types.entries()) {
         const domain = `customer-${i + 1}.example.test`;
@@ -68,6 +75,7 @@ async function main() {
             metadata: type === "domain" ? { registryExpiresAt: "2027-09-30T00:00:00Z" } : {},
           })
           .returning();
+        if (!resource) throw new Error("Demo resource was not created.");
         await tx.insert(costAllocations).values({
           resourceId: resource.id,
           period,

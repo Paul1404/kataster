@@ -4,8 +4,8 @@ The README screenshots come from a local Kataster instance at 1440 x 1000,
 using an isolated PostgreSQL database and Redis, with no worker or real
 provider connections. They contain only fictional register entries.
 
-`scripts/seed-demo.ts` creates 8 customers, 32 resources, 8 example check
-results, one EUR 284 cost pool, and EUR 772 in monthly contract positions.
+`scripts/seed-demo.ts` creates 8 customers, 32 resources, 8 synthetic current
+check states, one EUR 284 cost pool, and EUR 772 in monthly contract positions.
 Cost allocation weights sum to one. Ownership creation is recorded through
 the application's history helper. It refuses a nonempty register, remote
 database hosts, production mode, and names without the `kataster_demo_` prefix.
