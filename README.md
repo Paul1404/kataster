@@ -1,5 +1,8 @@
 # Kataster
 
+![Quality](https://github.com/Paul1404/kataster/actions/workflows/quality.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/license-MIT-38b2ac)](LICENSE)
+
 Kataster connects an infrastructure inventory with customer ownership, provider
 costs, contracts, and billing. It is built for a small hosting operation: domains,
 DNS, mail, hosts, containers, cloud projects, and certificates in one register.
@@ -14,13 +17,51 @@ prefix.
 contains no production inventory, customer database, or provider credentials.
 See [the publication boundary](docs/publication.md).
 
+![Kataster billing readiness, customer costs, prices, and margin](docs/screenshots/billing.png)
+
+## From infrastructure to an invoice
+
+1. **Discover:** AWS, SSM, Mailcow, Hetzner Cloud, Railway, WordPress, Checkmk,
+   and HTTP connectors feed inventory or health checks.
+2. **Assign:** give each resource an owner, retain its lifecycle, and record
+   ownership changes instead of losing history when infrastructure disappears.
+3. **Account:** allocate provider cost pools to resources, maintain contract
+   positions, and see customer margin separately from internal overhead.
+4. **Invoice:** check billing readiness, create invoice snapshots, and keep
+   the original lines and recipient details fixed after creation.
+
+The background worker handles checks and synchronization. The German operator
+interface keeps inventory, operational attention, costs, and billing connected.
+MCP offers scoped access to the same register, with read-only tokens by default.
+
+## Screenshots
+
+These are captures of the application, not design mockups. Every customer,
+domain, email address, and amount is fictional. The demo has 8 customers,
+32 resources, EUR 284 in monthly provider costs, and EUR 772 in contract charges.
+These are demonstration figures, not production totals or capacity claims.
+
+### Inventory and ownership
+
+![Kataster resource explorer with owners, types, and allocated costs](docs/screenshots/objects.png)
+
+### Operator overview
+
+![Kataster monthly financial overview, inventory, and ownership history](docs/screenshots/dashboard.png)
+
+The screenshot demo deliberately runs without a worker or external provider
+connections. Its worker and stale-check warnings show the real application
+behavior when monitoring is not running.
+
+See [the reproducible demo](docs/demo.md) for data and capture boundaries.
+
 ## Stack
 
 TanStack Start (Vite) + Router + Query + Form, Tailwind v4 + shadcn/ui, oRPC, better-auth, Drizzle ORM + PostgreSQL, BullMQ + Redis, Bun. Biome + Vitest. Deployed on Railway.
 
 ## How it works
 
-- **Connectors** run health checks. A connector is one file under `src/server/connectors/` that declares a config schema and a `check()` function. The HTTP connector ships built; AWS Route 53 is the first credentialed example.
+- **Connectors** declare configuration and health or discovery behavior under `src/server/connectors/`. The registry includes AWS, SSM, Mailcow, Hetzner Cloud, Railway, WordPress, Checkmk, and HTTP.
 - **Connections** hold encrypted credentials (AES-256-GCM). Configure an API key once, reference it from many assets.
 - **Resources** are Configuration Items with an owner, a lifecycle status, and an audit trail. Connectors discover and enrich them; nothing is deleted, stale objects are decommissioned.
 - **Customers** are CRM records with contacts, billing fields, and contract positions. Cost is attributed per resource and compared with what each customer pays.

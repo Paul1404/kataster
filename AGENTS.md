@@ -153,6 +153,9 @@ provider responses, or database exports. Applied migrations retain their exact
 contents; do not rewrite them to anonymize examples. See `docs/publication.md`.
 Public signup stays disabled. Provision operators only with the terminal-only
 `bun run user:create` command; each operator can access the entire register.
+The portfolio seed is `bun run demo:seed`, restricted to an empty local
+`kataster_demo_*` register. Screenshots and their reproduction boundary are
+documented in `docs/demo.md`; never use production data or hide live warnings.
 
 Run the checks relevant to the change, including type checking, tests, and the
 production build. Exercise the affected connector, worker, API, or UI workflow.
