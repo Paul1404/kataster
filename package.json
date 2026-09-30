@@ -4,6 +4,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "demo:seed": "bun run scripts/seed-demo.ts",
     "user:create": "bun run scripts/create-operator.ts",
     "dev": "vite dev --port 3000",
     "build": "vite build",
