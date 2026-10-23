@@ -98,7 +98,8 @@ export const httpConnector = defineConnector({
   async check(target, config, _secrets, ctx): Promise<CheckResult> {
     const start = performance.now();
     const timeout = AbortSignal.timeout(config.timeoutMs);
-    const signal = AbortSignal.any([ctx.signal, timeout]);
+    const requestController = new AbortController();
+    const signal = AbortSignal.any([ctx.signal, timeout, requestController.signal]);
 
     try {
       const res = await fetch(target, {
@@ -108,6 +109,13 @@ export const httpConnector = defineConnector({
         headers: { "user-agent": "kataster-probe/1.0" },
       });
       const latencyMs = Math.round(performance.now() - start);
+      // This probe observes headers/status only. Release a GET body immediately,
+      // including large or endless streams, instead of retaining it until GC.
+      // Bun 1.3 needs an explicit request abort to stop the underlying download;
+      // cancelling its ReadableStream alone can leave it running until timeout.
+      // A body transport failure must not replace the status already observed.
+      requestController.abort();
+      await res.body?.cancel().catch(() => {});
       const matched = res.status === config.expectedStatus;
       let status: CheckStatus = !matched
         ? "down"
