@@ -23,7 +23,11 @@ const WordpressConfig = v.object({
 });
 
 function joinUrl(target: string, path: string): string {
-  return `${ensureBaseUrl(target)}/${path.replace(/^\/+/, "")}`;
+  const url = new URL(`${ensureBaseUrl(target)}/${path.replace(/^\/+/, "")}`);
+  // The index also contains every route and its schema. Ask only for the fields
+  // this probe reads, preserving custom paths and query-based REST routing.
+  url.searchParams.set("_fields", "name,namespaces");
+  return url.toString();
 }
 
 export const wordpressConnector = defineConnector({

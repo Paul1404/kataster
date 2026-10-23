@@ -16,6 +16,30 @@ function jsonResponse(body: unknown, status = 200) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("wordpressConnector.check", () => {
+  it.each([
+    "/wp-json/",
+    "/?rest_route=/",
+    "/cms/wp-json/?context=view",
+  ])("requests only health metadata while preserving the configured path %s", async (apiPath) => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request) =>
+      jsonResponse({ name: "My Blog", namespaces: ["wp/v2"] }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const config = v.parse(wordpressConnector.configSchema, { apiPath });
+
+    const result = await wordpressConnector.check("https://blog.example.com", config, {}, ctx);
+
+    const actual = new URL(fetchMock.mock.calls[0]?.[0] as string);
+    const expected = new URL(apiPath, "https://blog.example.com");
+    expect(actual.pathname).toBe(expected.pathname);
+    for (const [key, value] of expected.searchParams) {
+      expect(actual.searchParams.get(key)).toBe(value);
+    }
+    expect(actual.searchParams.get("_fields")).toBe("name,namespaces");
+    expect(result.status).toBe("up");
+    expect(result.raw).toMatchObject({ siteName: "My Blog", namespaces: 1 });
+  });
+
   it("reports up when /wp-json returns site info", async () => {
     vi.stubGlobal(
       "fetch",

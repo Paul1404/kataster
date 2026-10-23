@@ -130,6 +130,9 @@ customer owns each one, what it costs, and what is invoiced for it.
   and billing_incomplete run once a day on the existing maintenance queue. Do
   not add a new always-on poll for alerting.
 
+WordPress probes request only `_fields=name,namespaces` from the REST index.
+Preserve custom API paths and query-based `rest_route` parameters.
+
 HTTP status probes must cancel unused response bodies after reading headers.
 Do not buffer whole pages or leave streaming bodies open. Keep the observed
 status, timeout, and certificate checks independent of body cleanup failures.
