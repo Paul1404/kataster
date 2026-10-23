@@ -39,6 +39,7 @@ jobs:
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
+      - run: bun scripts/smoke-http-probe.ts
       - run: bunx drizzle-kit check
 
   container:
