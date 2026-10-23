@@ -6,7 +6,7 @@ import { httpConnector } from "./http.connector";
 const ctx: CheckContext = { signal: new AbortController().signal, now: new Date() };
 
 function config(overrides: Record<string, unknown> = {}) {
-  return v.parse(httpConnector.configSchema, overrides) as any;
+  return v.parse(httpConnector.configSchema, { checkCertificate: false, ...overrides }) as any;
 }
 
 afterEach(() => {
@@ -47,6 +47,52 @@ describe("httpConnector.check", () => {
     const result = await httpConnector.check("https://example.com", config(), {}, ctx);
     expect(result.status).toBe("down");
     expect(result.message).toContain("erwartet 200");
+  });
+
+  it.each([200, 500])("releases an unfinished GET body for status %s", async (status) => {
+    const cancel = vi.fn();
+    const response = new Response(new ReadableStream({ cancel }), { status });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response),
+    );
+
+    const result = await httpConnector.check("http://example.test", config(), {}, ctx);
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(result.raw.httpStatus).toBe(status);
+    expect(result.status).toBe(status === 200 ? "up" : "down");
+  });
+
+  it("keeps the observed status when body cancellation fails", async () => {
+    const response = new Response(
+      new ReadableStream({
+        cancel() {
+          throw new Error("connection closed");
+        },
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response),
+    );
+    const result = await httpConnector.check("http://example.test", config(), {}, ctx);
+    expect(result.status).toBe("up");
+    expect(result.raw.httpStatus).toBe(200);
+  });
+
+  it("accepts a HEAD response without a body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null)),
+    );
+    const result = await httpConnector.check(
+      "http://example.test",
+      config({ method: "HEAD" }),
+      {},
+      ctx,
+    );
+    expect(result.status).toBe("up");
   });
 
   it("reports down with null latency on timeout", async () => {

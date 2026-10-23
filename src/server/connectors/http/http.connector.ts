@@ -108,6 +108,10 @@ export const httpConnector = defineConnector({
         headers: { "user-agent": "kataster-probe/1.0" },
       });
       const latencyMs = Math.round(performance.now() - start);
+      // This probe observes headers/status only. Release a GET body immediately,
+      // including large or endless streams, instead of retaining it until GC.
+      // A body transport failure must not replace the status already observed.
+      await res.body?.cancel().catch(() => {});
       const matched = res.status === config.expectedStatus;
       let status: CheckStatus = !matched
         ? "down"
