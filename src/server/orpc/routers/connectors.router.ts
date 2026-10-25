@@ -1,3 +1,4 @@
+import { isFinopsSource } from "../../../lib/finops-sources";
 import { listConnectors } from "../../connectors/registry";
 import { schemaToFields } from "../../connectors/schema-to-fields";
 import { authed } from "../base";
@@ -6,19 +7,21 @@ import { authed } from "../base";
 // schema and no secret value ever crosses the wire.
 export const connectorsRouter = {
   list: authed.handler(() => {
-    return listConnectors().map((connector) => ({
-      id: connector.id,
-      name: connector.name,
-      description: connector.description,
-      icon: connector.icon,
-      kind: connector.kind,
-      capabilities: connector.capabilities,
-      configFields: schemaToFields(connector.configSchema),
-      secretFields: connector.secretSchema
-        ? schemaToFields(connector.secretSchema, { secret: true })
-        : [],
-      setup: connector.setup ?? null,
-      defaultIntervalSeconds: connector.defaultIntervalSeconds ?? 60,
-    }));
+    return listConnectors()
+      .filter((connector) => isFinopsSource(connector.id))
+      .map((connector) => ({
+        id: connector.id,
+        name: connector.name,
+        description: connector.description,
+        icon: connector.icon,
+        kind: connector.kind,
+        capabilities: connector.capabilities,
+        configFields: schemaToFields(connector.configSchema),
+        secretFields: connector.secretSchema
+          ? schemaToFields(connector.secretSchema, { secret: true })
+          : [],
+        setup: connector.setup ?? null,
+        defaultIntervalSeconds: connector.defaultIntervalSeconds ?? 60,
+      }));
   }),
 };

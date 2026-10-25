@@ -36,7 +36,7 @@ function ConnectionsPage() {
     <div>
       <PageHeader
         title="Verbindungen"
-        description="Wiederverwendbare, verschlüsselte Zugangsdaten. Einmal eingerichtet, von vielen Prüfungen genutzt."
+        description="Verschlüsselte Zugänge für den Abgleich von Inventar und Anbieterkosten."
         actions={
           <Button asChild>
             <Link to="/connections/new">

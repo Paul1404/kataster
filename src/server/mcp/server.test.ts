@@ -33,3 +33,30 @@ describe("MCP scopes", () => {
     expect(response).toMatchObject({ error: { code: -32001 } });
   });
 });
+
+describe("host exporter isolation", () => {
+  const host = {
+    id: "host-token",
+    name: "Host exporter",
+    scopes: ["host:host.example.test" as const],
+  };
+  it("exposes only the snapshot sync, never financial or customer tools", async () => {
+    const response = await handleMcpMessage({ id: 1, method: "tools/list" }, host);
+    expect(response).toMatchObject({ result: { tools: [{ name: "sync_host_inventory" }] } });
+    const tools = (response as { result: { tools: unknown[] } }).result.tools;
+    expect(tools).toHaveLength(1);
+  });
+  it("rejects another hostname and direct reads before any database mutation", async () => {
+    for (const [name, args] of [
+      ["sync_host_inventory", { snapshot: { hostname: "other.example.test" } }],
+      ["list_customers", {}],
+    ] as const) {
+      expect(
+        await handleMcpMessage(
+          { id: 1, method: "tools/call", params: { name, arguments: args } },
+          host,
+        ),
+      ).toMatchObject({ error: { code: -32001 } });
+    }
+  });
+});

@@ -23,8 +23,9 @@ bun run dev
 
 Use only local demo authentication values. Do not copy a production `.env`.
 Do not start a worker: `.example.test` targets are fictional, and the demo's
-stored check state is synthetic. The operator overview honestly reports the
-missing worker and stale checks. Never hide production warnings for a capture.
+stored check state is synthetic. The FinOps overview reports financial attribution and incomplete source data.
+It has no worker, uptime or incident panels. Never hide incomplete financial data
+for a capture.
 
 Capture `/billing`, `/objects`, and `/dashboard` after loading completes,
 with reduced motion enabled. Review the images before replacing the README

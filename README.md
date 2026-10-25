@@ -1,4 +1,4 @@
-# Kataster
+# Kataster FinOps
 
 ![Quality](https://github.com/Paul1404/kataster/actions/workflows/quality.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/license-MIT-38b2ac)](LICENSE)
@@ -8,7 +8,7 @@ costs, contracts, and billing. It is built for a small hosting operation: domain
 DNS, mail, hosts, containers, cloud projects, and certificates in one register.
 
 Connectors discover and enrich resources. The operator can see who owns them,
-what they cost, which checks need attention, and whether a customer is ready to
+what they cost, when their data was synchronized, and whether a customer is ready to
 be invoiced. The interface is German. The name comes from the German land
 register; `LFIO_` environment variables retain the former product's compatibility
 prefix.
@@ -16,8 +16,6 @@ prefix.
 [MIT licensed](LICENSE). Public source, private deployments. This repository
 contains no production inventory, customer database, or provider credentials.
 See [the publication boundary](docs/publication.md).
-
-![Kataster billing readiness, customer costs, prices, and margin](docs/screenshots/billing.png)
 
 ## From infrastructure to an invoice
 
@@ -30,30 +28,15 @@ See [the publication boundary](docs/publication.md).
 4. **Invoice:** check billing readiness, create invoice snapshots, and keep
    the original lines and recipient details fixed after creation.
 
-The background worker handles checks and synchronization. The German operator
-interface keeps inventory, operational attention, costs, and billing connected.
+The background worker synchronizes inventory and provider costs. The German operator
+interface keeps inventory, source freshness, costs, and billing connected.
 MCP offers scoped access to the same register, with read-only tokens by default.
 
-## Screenshots
+## Local verification
 
-These are captures of the application, not design mockups. Every customer,
-domain, email address, and amount is fictional. The demo has 8 customers,
-32 resources, EUR 284 in monthly provider costs, and EUR 772 in contract charges.
-These are demonstration figures, not production totals or capacity claims.
-
-### Inventory and ownership
-
-![Kataster resource explorer with owners, types, and allocated costs](docs/screenshots/objects.png)
-
-### Operator overview
-
-![Kataster monthly financial overview, inventory, and ownership history](docs/screenshots/dashboard.png)
-
-The screenshot demo deliberately runs without a worker or external provider
-connections. Its worker and stale-check warnings show the real application
-behavior when monitoring is not running.
-
-See [the reproducible demo](docs/demo.md) for data and capture boundaries.
+A reproducible isolated demo uses fictional customers, example domains and
+synthetic costs. See [the demo instructions](docs/demo.md). Never publish a
+production inventory or real customer data in documentation captures.
 
 ## Stack
 
@@ -130,3 +113,10 @@ bun run test
 For a complete source check, build first to generate the route tree, then run
 `bun run lint`, `bun run typecheck`, `bun run test`, and `bunx drizzle-kit check`.
 CI also builds the production Docker image and scans Git history for secrets.
+
+## FinOps sources
+
+The current host exporter reconciles Stalwart mailboxes, rootless GitOps
+containers, Contabo costs and the B2 backup inventory. See
+[host inventory](docs/host-inventory.md). Maps, uptime views, patch alerts and
+monitoring notifications are retired. Historical records remain recoverable.

@@ -44,7 +44,7 @@ function DomainsPage() {
     <div>
       <PageHeader
         title="Mail-Domains"
-        description="Mailcow-Domains und Postfächer den Kunden zuordnen, denen sie gehören."
+        description="Mail-Domains und Postfächer den Kunden zuordnen, denen sie gehören."
       />
       <div className="space-y-6 p-8">
         <div className="inline-flex rounded-lg border border-border p-1">
@@ -71,8 +71,8 @@ function DomainsPage() {
           </Card>
         ) : domains.length === 0 ? (
           <Card className="p-8 text-center text-sm text-muted-foreground">
-            Noch keine Mailcow-Domains. Lege eine Mailcow-Prüfung an und warte auf den ersten
-            Durchlauf, dann erscheinen Domains und Postfächer hier.
+            Noch keine Mail-Domains. Verbinde eine Mailquelle und warte auf den ersten Durchlauf,
+            dann erscheinen Domains und Postfächer hier.
           </Card>
         ) : view === "domains" ? (
           <DomainsView domains={domains} customers={customers} onChange={invalidate} />

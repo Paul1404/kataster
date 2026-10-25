@@ -8,7 +8,7 @@ type Executor = typeof db | Tx;
 
 export interface HistoryEntry {
   resourceId: string;
-  field: "owner" | "status" | "name";
+  field: "owner" | "status" | "name" | "provider";
   oldValue: string | null;
   newValue: string | null;
 }
@@ -97,13 +97,16 @@ export async function assignOwnerWithHistory(input: {
 }
 
 /** Flip lifecycle status and record it. */
-export async function setResourceStatus(input: {
-  resourceIds: string[];
-  status: "active" | "decommissioned";
-  actor: string;
-}): Promise<number> {
+export async function setResourceStatus(
+  input: {
+    resourceIds: string[];
+    status: "active" | "decommissioned";
+    actor: string;
+  },
+  executor?: Executor,
+): Promise<number> {
   if (input.resourceIds.length === 0) return 0;
-  return db.transaction(async (tx) => {
+  const run = async (tx: Executor) => {
     const before = await tx
       .select({ id: resources.id, status: resources.status })
       .from(resources)
@@ -130,5 +133,6 @@ export async function setResourceStatus(input: {
       tx,
     );
     return targets.length;
-  });
+  };
+  return executor ? run(executor) : db.transaction(run);
 }

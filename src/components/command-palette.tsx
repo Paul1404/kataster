@@ -85,7 +85,7 @@ export function CommandPalette() {
         navigate({ to: "/ci/$id", params: { id: row.id } });
         return;
       case "asset":
-        navigate({ to: "/assets/$assetId", params: { assetId: row.id } });
+        navigate({ to: "/sources" });
         return;
       case "page": {
         const page = PALETTE_PAGES.find((p) => p.to === row.id);
@@ -120,8 +120,7 @@ export function CommandPalette() {
       <DialogContent aria-describedby="command-palette-hint" className="p-0">
         <DialogTitle className="sr-only">Suche und Navigation</DialogTitle>
         <DialogDescription id="command-palette-hint" className="sr-only">
-          Tippe, um Kunden, Objekte und Prüfungen zu finden. Mit den Pfeiltasten wählen, mit Enter
-          öffnen.
+          Tippe, um Kunden und Objekte zu finden. Mit den Pfeiltasten wählen, mit Enter öffnen.
         </DialogDescription>
         <div className="flex items-center gap-2 border-b border-border px-4">
           <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -133,7 +132,7 @@ export function CommandPalette() {
               setCursor(0);
             }}
             onKeyDown={onInputKeyDown}
-            placeholder="Kunden, Objekte, Prüfungen oder Seiten suchen"
+            placeholder="Kunden, Objekte oder Seiten suchen"
             aria-label="Suchbegriff"
             aria-controls="command-palette-results"
             aria-activedescendant={

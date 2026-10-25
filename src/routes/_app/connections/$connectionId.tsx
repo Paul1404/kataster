@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Pencil } from "lucide-react";
 import { ConnectorGlyph } from "@/components/connector-glyph";
 import { PageHeader } from "@/components/page-header";
-import { StatusDot } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { relativeTime } from "@/lib/format";
@@ -85,24 +84,22 @@ function ConnectionDetailPage() {
           <div className="text-sm font-medium">Genutzt von ({c.assets.length})</div>
           {c.assets.length === 0 ? (
             <Card className="p-6 text-center text-sm text-muted-foreground">
-              Noch keine Prüfung nutzt diese Verbindung.
+              Noch keine Datenquelle nutzt diese Verbindung.
             </Card>
           ) : (
             <Card className="divide-y divide-border p-0">
               {c.assets.map((a) => (
                 <Link
                   key={a.id}
-                  to="/assets/$assetId"
-                  params={{ assetId: a.id }}
+                  to="/sources"
                   className="flex items-center gap-2 px-4 py-2.5 text-sm transition-colors hover:bg-accent"
                 >
-                  <StatusDot status={a.lastStatus} />
                   <span className="min-w-0 flex-1 truncate font-medium">{a.name}</span>
                   {!a.enabled && (
                     <span className="shrink-0 text-xs text-muted-foreground">pausiert</span>
                   )}
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {a.lastCheckedAt ? relativeTime(a.lastCheckedAt) : "nie geprüft"}
+                    {a.lastCheckedAt ? relativeTime(a.lastCheckedAt) : "noch kein Abgleich"}
                   </span>
                 </Link>
               ))}

@@ -1,4 +1,9 @@
-import type { CustomerKind } from "@/components/map/infra-map";
+export type CustomerKind =
+  | "provider"
+  | "customer_private"
+  | "customer_business"
+  | "internal"
+  | "partner";
 
 export const KIND_LABEL: Record<CustomerKind, string> = {
   provider: "Anbieter",

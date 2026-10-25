@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Boxes, History, PackageCheck, Server, ShieldAlert } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { Boxes, History, Server } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BulkAssignBar } from "@/components/bulk-assign-bar";
 import { PageHeader } from "@/components/page-header";
-import { StatusBadge, StatusDot } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,13 +19,11 @@ import {
   formatBytes,
   formatDateTime,
   formatEuro,
-  formatLatency,
   relativeTime,
   resourceTypeLabel,
 } from "@/lib/format";
 import { orpc, orpcClient } from "@/lib/orpc";
 import { useSelection } from "@/lib/use-selection";
-import type { CheckStatus } from "@/server/connectors/types";
 
 const NONE = "__none__";
 const FACET_TITLES: Record<string, string> = {
@@ -39,25 +36,20 @@ const FACET_TITLES: Record<string, string> = {
   cloudfront: "CloudFront",
   acm: "TLS-Zertifikat (ACM)",
   mailcow: "Mail (mailcow)",
+  "managed-host": "Hostinventar, Stalwart und GitOps",
 };
 
 const HISTORY_FIELD: Record<string, string> = {
   owner: "Eigentümer",
   status: "Status",
   name: "Name",
+  provider: "Anbieter",
 };
 function actorLabel(actor: string): string {
   if (actor === "worker") return "Worker";
   if (actor.startsWith("mcp")) return "MCP";
   if (actor.startsWith("user:")) return actor.slice(5);
   return actor;
-}
-
-function pingToStatus(ping: string | null | undefined): CheckStatus {
-  if (ping === "Online") return "up";
-  if (ping === "ConnectionLost") return "down";
-  if (ping === "Inactive") return "degraded";
-  return "unknown";
 }
 
 function labelize(key: string): string {
@@ -123,15 +115,12 @@ export function CIDetail({ id, backTo }: { id: string; backTo: string }) {
     );
   }
 
-  const { resource, facets, children, monitor, patches, servedBy, history, parent } = q.data;
+  const { resource, facets, children, servedBy, history, parent } = q.data;
   const isHost = resource.type === "host";
   const decommissioned = resource.status === "decommissioned";
   const attributes = Object.entries(resource.metadata as Record<string, unknown>).filter(
     ([, v]) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0),
   );
-  const ssm = facets.find((f) => f.source === "ssm")?.data as Record<string, unknown> | undefined;
-  const status =
-    (monitor?.lastStatus as CheckStatus | undefined) ?? pingToStatus(ssm?.pingStatus as string);
   const customers = customersQ.data ?? [];
   const kindLabel = resourceTypeLabel(resource.type);
 
@@ -167,18 +156,6 @@ export function CIDetail({ id, backTo }: { id: string; backTo: string }) {
                   {parent.name}
                 </Link>
               </span>
-            )}
-            {isHost && (
-              <>
-                <StatusDot status={status} />
-                <StatusBadge status={status} />
-                {monitor && (
-                  <span className="text-xs text-muted-foreground">
-                    {formatLatency(monitor.lastLatencyMs)} · geprüft{" "}
-                    {relativeTime(monitor.lastCheckedAt)}
-                  </span>
-                )}
-              </>
             )}
             {servedBy.length > 0 && (
               <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -230,33 +207,35 @@ export function CIDetail({ id, backTo }: { id: string; backTo: string }) {
 
         {facets.length > 0 && (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {facets.map((f) => (
-              <Card key={f.source} className="space-y-2 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {FACET_TITLES[f.source] ?? f.source}
-                </div>
-                <dl className="space-y-1 text-sm">
-                  {Object.entries(f.data as Record<string, unknown>)
-                    .filter(([, v]) => v != null && v !== "")
-                    .map(([k, v]) => (
-                      <div key={k} className="flex items-baseline justify-between gap-3">
-                        <dt className="shrink-0 text-xs text-muted-foreground">{labelize(k)}</dt>
+            {facets
+              .filter((f) => f.source !== "ssm")
+              .map((f) => (
+                <Card key={f.source} className="space-y-2 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {FACET_TITLES[f.source] ?? f.source}
+                  </div>
+                  <dl className="space-y-1 text-sm">
+                    {Object.entries(f.data as Record<string, unknown>)
+                      .filter(([, v]) => v != null && v !== "")
+                      .map(([k, v]) => (
+                        <div key={k} className="flex items-baseline justify-between gap-3">
+                          <dt className="shrink-0 text-xs text-muted-foreground">{labelize(k)}</dt>
+                          <dd className="min-w-0 truncate text-right font-mono text-xs">
+                            {formatVal(k, v)}
+                          </dd>
+                        </div>
+                      ))}
+                    {(f.ips as string[]).length > 0 && (
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="shrink-0 text-xs text-muted-foreground">IP</dt>
                         <dd className="min-w-0 truncate text-right font-mono text-xs">
-                          {formatVal(k, v)}
+                          {(f.ips as string[]).join(", ")}
                         </dd>
                       </div>
-                    ))}
-                  {(f.ips as string[]).length > 0 && (
-                    <div className="flex items-baseline justify-between gap-3">
-                      <dt className="shrink-0 text-xs text-muted-foreground">IP</dt>
-                      <dd className="min-w-0 truncate text-right font-mono text-xs">
-                        {(f.ips as string[]).join(", ")}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </Card>
-            ))}
+                    )}
+                  </dl>
+                </Card>
+              ))}
           </div>
         )}
 
@@ -316,67 +295,8 @@ export function CIDetail({ id, backTo }: { id: string; backTo: string }) {
             </Card>
           </section>
         )}
-
-        {(patches.installed.length > 0 || patches.missing.length > 0) && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <PatchList
-              icon={<ShieldAlert className="size-3.5" />}
-              title="Ausstehende Updates"
-              rows={patches.missing.map((p) => ({ title: p.title, right: p.severity ?? "" }))}
-              empty="Vollständig gepatcht."
-            />
-            <PatchList
-              icon={<PackageCheck className="size-3.5" />}
-              title="Letzte Updates"
-              rows={patches.installed.map((p) => ({
-                title: p.title,
-                right: p.installedAt ? relativeTime(p.installedAt) : "",
-              }))}
-              empty="Keine Updates aufgezeichnet."
-            />
-          </div>
-        )}
       </div>
     </div>
-  );
-}
-
-function PatchList({
-  icon,
-  title,
-  rows,
-  empty,
-}: {
-  icon: ReactNode;
-  title: string;
-  rows: { title: string; right: string }[];
-  empty: string;
-}) {
-  return (
-    <section className="space-y-2">
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {icon}
-        {title}
-        {rows.length > 0 ? ` (${rows.length})` : ""}
-      </div>
-      {rows.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{empty}</p>
-      ) : (
-        <div className="max-h-80 space-y-1 overflow-y-auto">
-          {rows.map((r) => (
-            <div
-              key={r.title}
-              className="flex items-center justify-between gap-3 rounded-md border border-border px-2.5 py-1.5"
-            >
-              <span className="min-w-0 truncate font-mono text-xs" title={r.title}>
-                {r.title}
-              </span>
-              <span className="shrink-0 text-[11px] text-muted-foreground">{r.right}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }
 

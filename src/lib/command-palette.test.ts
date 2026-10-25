@@ -47,10 +47,10 @@ describe("buildGroups", () => {
         { id: "a1", name: "web HTTP", externalId: "https://web", type: null, ownerName: null },
       ],
     });
-    expect(groups.map((g) => g.key)).toEqual(["customers", "resources", "assets", "pages"]);
+    expect(groups.map((g) => g.key)).toEqual(["customers", "resources", "pages"]);
     expect(groups[0]?.rows[0]).toMatchObject({ kind: "customer", typeLabel: "Kunde" });
     expect(groups[1]?.rows[0]).toMatchObject({ typeLabel: "Host", sublabel: "Weber GmbH" });
-    expect(groups[2]?.rows[0]).toMatchObject({ kind: "asset", sublabel: "https://web" });
+    expect(groups.flatMap((g) => g.rows).some((r) => r.kind === "asset")).toBe(false);
   });
 
   it("falls back to the external id when a resource has no owner", () => {

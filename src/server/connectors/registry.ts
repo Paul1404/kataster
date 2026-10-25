@@ -3,6 +3,7 @@ import { checkmkConnector } from "./checkmk/checkmk.connector";
 import { hetznerCloudConnector } from "./hetzner-cloud/hetzner-cloud.connector";
 import { httpConnector } from "./http/http.connector";
 import { mailcowConnector } from "./mailcow/mailcow.connector";
+import { managedHostConnector } from "./managed-host/managed-host.connector";
 import { railwayConnector } from "./railway/railway.connector";
 import { ssmConnector } from "./ssm/ssm.connector";
 import type { AnyConnector } from "./types";
@@ -13,6 +14,7 @@ import { wordpressConnector } from "./wordpress/wordpress.connector";
 // providers come first; the generic HTTP/uptime probe is demoted to the end
 // since it owns nothing and is now optional.
 const connectorList: AnyConnector[] = [
+  managedHostConnector,
   awsConnector,
   ssmConnector,
   mailcowConnector,

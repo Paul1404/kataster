@@ -35,6 +35,7 @@ export const resourceType = pgEnum("resource_type", [
   // A domain as a Configuration Item, identified by name and enriched by AWS
   // (registry, dns, ses, cloudfront, acm) + mailcow facets.
   "domain",
+  "backup",
 ]);
 
 // Lifecycle of a Configuration Item. A resource no source has reported for a
@@ -48,6 +49,9 @@ export const resourceProvider = pgEnum("resource_provider", [
   "railway",
   "mailcow",
   "other",
+  "contabo",
+  "stalwart",
+  "backblaze",
 ]);
 
 export const resources = pgTable(

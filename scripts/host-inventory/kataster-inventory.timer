@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Kataster host inventory every fifteen minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+RandomizedDelaySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

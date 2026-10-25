@@ -23,7 +23,7 @@ customer owns each one, what it costs, and what is invoiced for it.
 
 - Connectors live in `src/server/connectors/` and declare configuration plus a
   health check. `kind` is `probe` (one service's health) or `source` (a provider
-  account sync feeding inventory and cost); the Prüfungen page lists them apart.
+  account sync feeding inventory and cost); the Datenquellen page exposes only FinOps inventory/cost sources.
 - Credentials are encrypted at rest. Never log or expose decrypted values.
 - The web service and BullMQ worker share one image but have separate Railway
   start commands and service settings.
@@ -52,16 +52,16 @@ customer owns each one, what it costs, and what is invoiced for it.
   `resources.ownerCustomerId` or `resources.status` directly.
 - The Objekte explorer (`/objects`) keeps its filters in validated URL search
   params; new list views should follow that pattern instead of local state.
-- `/dashboard` is the operator cockpit, not a monitoring overview: money for the
+- `/dashboard` is the FinOps cockpit: money for the
   current period (Kosten, Berechnet, Marge, Eigenaufwand from
   `loadMarginReport`), a prioritised "Handlungsbedarf" list, the inventory
-  rollup, the newest `resource_history` entries, and a demoted monitoring
-  strip. It reads one procedure, `dashboard.cockpit`; extend that payload
+  rollup, the newest `resource_history` entries, without monitoring or uptime
+  panels. It reads one procedure, `dashboard.cockpit`; extend that payload
   instead of adding client queries. The action rows are built by the pure
   `src/lib/cockpit-actions.ts` (tested), so ordering and wording change there.
 - The command palette (`src/components/command-palette.tsx`, mounted in the app
-  shell) opens with Cmd+K or Ctrl+K and searches customers, active CIs and
-  checks plus the static pages. It is backed by the single `search.palette`
+  shell) opens with Cmd+K or Ctrl+K and searches customers and active CIs
+  plus the static pages. It is backed by the single `search.palette`
   procedure with per-group caps; ranking lives in `src/server/search/rank.ts`
   and result grouping in `src/lib/command-palette.ts`, both tested.
 - `src/routeTree.gen.ts` and Drizzle migrations are generated. Regenerate them
@@ -119,16 +119,9 @@ customer owns each one, what it costs, and what is invoiced for it.
   `INVOICE_SENDER_*` environment variables, never from the database. A VAT rate
   of 0 prints the small-business note (Paragraph 19 UStG).
 
-- Outbound notifications live in `src/server/notifications/`. `events.ts` is the
-  pure engine (state plus enabled rules in, `{ruleKind, dedupeKey, title, body}`
-  out) and is the only place alert wording belongs. `deliver.ts` claims a
-  `notification_deliveries` row by its unique `dedupe_key` before it POSTs, so
-  an event can never be sent twice; a failed attempt keeps its row and releases
-  the key for a later retry. The webhook body carries `title`, `message`, `text`
-  and `content` at once, which makes one URL work for ntfy, Slack and Discord.
-  Incidents notify in real time from `persistCheckResult`; expiry, worker_down
-  and billing_incomplete run once a day on the existing maintenance queue. Do
-  not add a new always-on poll for alerting.
+- Legacy notification implementation and storage remain under
+  `src/server/notifications/` for historical reference. Active FinOps code does
+  not collect monitoring events, schedule notification digests or deliver alarms.
 
 WordPress probes request only `_fields=name,namespaces` from the REST index.
 Preserve custom API paths and query-based `rest_route` parameters.
@@ -245,3 +238,21 @@ removal, delete package metadata or hide scanner findings. Keep shell/coreutils,
 CA certificates and required C/C++ libraries. CI verifies the pruned image as its
 non-root user; exercise the real PDF/image tools and startup workflows before
 merging. Rebuild images for package updates, never mutate a running deployment.
+
+## Current managed-host inventory
+
+`managed-host` consumes the secret-free push report documented in
+`docs/host-inventory.md`. The dedicated `host:<hostname>` token can call only
+`sync_host_inventory` for that host. Keep host credentials out of MCP arguments,
+responses and audit details; registration accepts only a SHA-256 hash.
+Preserve mailbox CI IDs and manually assigned owners when adopting Stalwart.
+A mixed host's cost pool serves both its containers and its own mailboxes.
+B2 amounts are explicitly storage estimates, never invoice or payment evidence.
+Retiring a source disables checks and closes its incidents with the retirement
+reason while retaining resources, ownership and historical cost records.
+
+Kataster is FinOps. Do not restore maps, uptime panels, patch monitoring, mail
+event polling, incident lists or alarm delivery. `/sources` reports only inventory
+and financial synchronization. Legacy monitoring URLs redirect to FinOps pages.
+The worker schedules only `FINOPS_SOURCE_IDS`; historical monitoring data stays
+readable in storage but is not collected or shown as product functionality.

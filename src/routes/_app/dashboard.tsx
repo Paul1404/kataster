@@ -2,14 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertTriangle, ArrowRight, CheckCircle2, History, Info, OctagonAlert } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { type ActionItem, type ActionSeverity, buildActionItems } from "@/lib/cockpit-actions";
 import {
-  formatBytes,
   formatEuro,
-  formatLatency,
   formatNumber,
   formatPeriod,
   relativeTime,
@@ -17,18 +13,10 @@ import {
 } from "@/lib/format";
 import { orpc } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
-import type { CheckStatus } from "@/server/connectors/types";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
 });
-
-const STATUS_TILES: { key: CheckStatus; label: string; dot: string }[] = [
-  { key: "up", label: "Online", dot: "bg-status-up" },
-  { key: "degraded", label: "Eingeschränkt", dot: "bg-status-degraded" },
-  { key: "down", label: "Ausfall", dot: "bg-status-down" },
-  { key: "unknown", label: "Unbekannt", dot: "bg-status-unknown" },
-];
 
 const HISTORY_FIELD_LABEL: Record<string, string> = {
   owner: "Eigentümer",
@@ -100,7 +88,7 @@ function DashboardPage() {
           ) : actions.length === 0 ? (
             <Card className="flex items-center gap-3 p-5 text-sm">
               <CheckCircle2 className="size-4 text-status-up" />
-              <span>Nichts offen. Zuordnung, Preise, Laufzeiten und Prüfungen sind sauber.</span>
+              <span>Keine offenen Zuordnungen oder Abrechnungslücken.</span>
             </Card>
           ) : (
             <Card className="divide-y divide-border">
@@ -186,68 +174,6 @@ function DashboardPage() {
             )}
           </Card>
         </section>
-
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">Monitoring</h2>
-            <Link to="/assets" className="text-xs text-muted-foreground hover:text-foreground">
-              Zu den Prüfungen
-            </Link>
-          </div>
-          <Card className="p-5">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {STATUS_TILES.map((tile) => (
-                <div key={tile.key} className="flex items-center gap-2">
-                  <span className={cn("size-2.5 rounded-full", tile.dot)} />
-                  <span className="text-xs text-muted-foreground">{tile.label}</span>
-                  <span className="font-mono text-sm font-semibold">
-                    {data ? data.monitoring.totals[tile.key] : "·"}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {data && data.monitoring.failing.length > 0 && (
-              <div className="mt-4 divide-y divide-border border-t border-border">
-                {data.monitoring.failing.map((asset) => (
-                  <Link
-                    key={asset.id}
-                    to="/assets/$assetId"
-                    params={{ assetId: asset.id }}
-                    className="flex items-center justify-between gap-4 py-2.5 text-sm transition-colors hover:text-foreground"
-                  >
-                    <span className="min-w-0 truncate font-medium">{asset.name}</span>
-                    <span className="flex shrink-0 items-center gap-4">
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {formatLatency(asset.lastLatencyMs)}
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {relativeTime(asset.lastCheckedAt)}
-                      </span>
-                      <StatusBadge status={asset.lastStatus} />
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </Card>
-        </section>
-
-        {data && data.monitoring.mailcow.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Mailserver</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {data.monitoring.mailcow.map((server) => (
-                <MailcowCard
-                  key={server.id}
-                  id={server.id}
-                  name={server.name}
-                  status={server.status}
-                  metadata={server.metadata as Record<string, unknown> | null}
-                />
-              ))}
-            </div>
-          </section>
-        )}
       </div>
     </div>
   );
@@ -309,68 +235,4 @@ function actorLabel(actor: string): string {
   if (actor.startsWith("user:")) return actor.slice("user:".length);
   if (actor.startsWith("mcp")) return "MCP";
   return actor;
-}
-
-function MailcowCard({
-  id,
-  name,
-  status,
-  metadata,
-}: {
-  id: string;
-  name: string;
-  status: CheckStatus;
-  metadata: Record<string, unknown> | null;
-}) {
-  const mailboxes = metadata?.mailboxes as { count?: number; quotaUsedBytes?: number } | undefined;
-  const domains = metadata?.domains as { count?: number } | undefined;
-  const aliases = metadata?.aliases as { count?: number } | undefined;
-  const storage = metadata?.storage as
-    | { used?: string; total?: string; usedPercent?: string }
-    | undefined;
-  const diskPct = storage?.usedPercent ? Number.parseInt(String(storage.usedPercent), 10) : null;
-
-  const stats = [
-    { label: "Domains", value: formatNumber(domains?.count ?? 0) },
-    { label: "Postfächer", value: formatNumber(mailboxes?.count ?? 0) },
-    { label: "Aliasse", value: formatNumber(aliases?.count ?? 0) },
-    {
-      label: "Belegter Speicher",
-      value: mailboxes?.quotaUsedBytes != null ? formatBytes(mailboxes.quotaUsedBytes) : "k. A.",
-    },
-  ];
-
-  return (
-    <Card className="space-y-4 p-5">
-      <div className="flex items-center justify-between">
-        <Link
-          to="/assets/$assetId"
-          params={{ assetId: id }}
-          className="font-medium hover:underline"
-        >
-          {name}
-        </Link>
-        <StatusBadge status={status} />
-      </div>
-      <div className="grid grid-cols-4 gap-3">
-        {stats.map((s) => (
-          <div key={s.label}>
-            <div className="text-xs text-muted-foreground">{s.label}</div>
-            <div className="mt-0.5 font-mono text-sm font-semibold">{s.value}</div>
-          </div>
-        ))}
-      </div>
-      {diskPct !== null && storage && (
-        <div className="space-y-1.5">
-          <div className="flex items-baseline justify-between text-xs">
-            <span className="text-muted-foreground">Speicher</span>
-            <span className="font-mono">
-              {storage.used} / {storage.total} ({diskPct} %)
-            </span>
-          </div>
-          <Progress value={diskPct} />
-        </div>
-      )}
-    </Card>
-  );
 }
