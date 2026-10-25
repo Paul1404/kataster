@@ -181,3 +181,10 @@ failure with no connection details. Responses disable caching.
 Both PostgreSQL and Redis must answer before the app is ready.
 The worker exposes private `/api/health` on `$PORT` only after all three workers
 are ready; it also checks PostgreSQL, Redis and the running worker loops.
+
+## Dependency audit gate
+
+CI runs `bun audit --production` against the committed lockfile before release
+checks. Run the full `bun audit` separately to track development-tool findings.
+Do not replace the lockfile audit with an empty Dependabot PR queue or suppress
+an advisory merely to make the gate pass.
