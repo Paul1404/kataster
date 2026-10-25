@@ -108,7 +108,7 @@ export function ConnectionForm({ connection }: { connection?: ConnectionRecord }
           </Select>
           <p className="text-xs text-muted-foreground">
             Hier erscheinen nur Connectoren, die Zugangsdaten brauchen. Connectoren ohne
-            Zugangsdaten (wie HTTP und WordPress) legst du direkt unter Prüfungen an.
+            Zugangsdaten werden nur für Quellen benötigt, die Inventar oder Kosten liefern.
           </p>
         </div>
       )}

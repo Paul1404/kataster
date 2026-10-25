@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import * as v from "valibot";
+import { isFinopsSource } from "../../lib/finops-sources";
 import { requireConnector } from "../connectors/registry";
 import { decryptSecret, encryptSecret } from "../crypto/secrets";
 import { db } from "../db";
@@ -60,14 +61,14 @@ function mask(row: typeof connections.$inferSelect): MaskedConnection {
 
 export async function listConnections(): Promise<MaskedConnection[]> {
   const rows = await db.select().from(connections).orderBy(connections.name);
-  return rows.map(mask);
+  return rows.filter((row) => isFinopsSource(row.connectorId)).map(mask);
 }
 
 export async function listConnectionsForConnector(
   connectorId: string,
 ): Promise<MaskedConnection[]> {
   const rows = await db.select().from(connections).where(eq(connections.connectorId, connectorId));
-  return rows.map(mask);
+  return rows.filter((row) => isFinopsSource(row.connectorId)).map(mask);
 }
 
 export async function createConnection(input: {

@@ -1,7 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Search } from "lucide-react";
 import { useState } from "react";
-import type { CustomerKind } from "@/components/map/infra-map";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import type { CustomerKind } from "@/lib/customer";
 import { KIND_LABEL } from "@/lib/customer";
 import { orpc, orpcClient } from "@/lib/orpc";
 import { ContactsEditor } from "./contacts-editor";
@@ -60,43 +59,15 @@ export function CustomerForm({
   const [tags, setTags] = useState((location?.tags ?? []).join(", "));
   const [notes, setNotes] = useState(location?.notes ?? "");
   const [address, setAddress] = useState(location?.address ?? "");
-  const [lat, setLat] = useState(location?.latitude != null ? String(location.latitude) : "");
-  const [lng, setLng] = useState(location?.longitude != null ? String(location.longitude) : "");
   const [customerNumber, setCustomerNumber] = useState(location?.customerNumber ?? "");
   const [billingEmail, setBillingEmail] = useState(location?.billingEmail ?? "");
   const [billingAddress, setBillingAddress] = useState(location?.billingAddress ?? "");
   const [vatId, setVatId] = useState(location?.vatId ?? "");
-  const [geoResults, setGeoResults] = useState<
-    { label: string; latitude: number; longitude: number }[] | null
-  >(null);
-  const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  async function runGeocode() {
-    if (!address.trim()) return;
-    setError(null);
-    setGeocoding(true);
-    try {
-      const results = await orpcClient.assets.geocode({ query: address });
-      setGeoResults(results);
-      if (results.length === 0) setError("Keine Treffer für diese Adresse.");
-      else if (!name.trim()) setName(address.split(",")[0]!.trim());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Suche fehlgeschlagen");
-    } finally {
-      setGeocoding(false);
-    }
-  }
-
   async function handleSubmit() {
-    const hasCoords = lat.trim() !== "" || lng.trim() !== "";
-    const latitude = hasCoords ? Number(lat) : null;
-    const longitude = hasCoords ? Number(lng) : null;
     if (!name.trim()) return setError("Name ist erforderlich.");
-    if (hasCoords && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) {
-      return setError("Beide Koordinaten angeben oder beide leer lassen.");
-    }
     setError(null);
     setSaving(true);
     try {
@@ -114,15 +85,12 @@ export function CustomerForm({
         billingEmail: billingEmail.trim() || null,
         billingAddress: billingAddress.trim() || null,
         vatId: vatId.trim() || null,
-        latitude,
-        longitude,
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
       };
       if (location) await orpcClient.customers.update({ id: location.id, ...payload });
       else await orpcClient.customers.create(payload);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: orpc.customers.key() }),
-        queryClient.invalidateQueries({ queryKey: orpc.dashboard.map.key() }),
-      ]);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: orpc.customers.key() })]);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
@@ -137,45 +105,12 @@ export function CustomerForm({
 
       <div className="space-y-2">
         <Label htmlFor="loc-address">Adresse</Label>
-        <div className="flex gap-2">
-          <Input
-            id="loc-address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Frankfurt am Main"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!address.trim() || geocoding}
-            onClick={runGeocode}
-          >
-            <Search />
-            {geocoding ? "Suche…" : "Suchen"}
-          </Button>
-        </div>
-        {geoResults && geoResults.length > 0 && (
-          <Select
-            onValueChange={(value) => {
-              const pick = geoResults[Number(value)];
-              if (!pick) return;
-              setLat(String(pick.latitude));
-              setLng(String(pick.longitude));
-              setAddress(pick.label);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={`${geoResults.length} Treffer, bitte wählen`} />
-            </SelectTrigger>
-            <SelectContent>
-              {geoResults.map((r, i) => (
-                <SelectItem key={`${r.latitude},${r.longitude}`} value={String(i)}>
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <Input
+          id="loc-address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Straße, Hausnummer, Postleitzahl und Ort"
+        />
       </div>
 
       <div className="space-y-2">
@@ -287,36 +222,6 @@ export function CustomerForm({
           />
         </div>
       </div>
-
-      <details className="rounded-lg border border-border p-4">
-        <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Kartenposition (optional)
-        </summary>
-        <div className="mt-3 grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="loc-lat">Breitengrad</Label>
-            <Input
-              id="loc-lat"
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              placeholder="50.11"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="loc-lng">Längengrad</Label>
-            <Input
-              id="loc-lng"
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              placeholder="8.68"
-            />
-          </div>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Wird über Suchen aus der Adresse gefüllt. Ohne Koordinaten erscheint der Kunde nicht auf
-          der Karte, alles andere funktioniert trotzdem.
-        </p>
-      </details>
 
       {location && <ContactsEditor customerId={location.id} />}
 
