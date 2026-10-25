@@ -12,8 +12,10 @@ export interface ObservedCertificate {
 
 // Open a TLS handshake just to read the served certificate. fetch() never exposes
 // it, so this is a second short-lived connection. Failures are swallowed (return
-// null) so a TLS hiccup never masks the HTTP result.
-function readCertificate(
+// null) so a TLS hiccup never masks the HTTP result. Only certificates from
+// an authenticated TLS connection are accepted; invalid/expired certificates
+// remain failures of the separate HTTP probe.
+export function readCertificate(
   host: string,
   port: number,
   timeoutMs: number,
@@ -31,7 +33,7 @@ function readCertificate(
       resolve(value);
     };
     const socket = tlsConnect(
-      { host, port, servername: host, rejectUnauthorized: false, timeout: timeoutMs },
+      { host, port, servername: host, rejectUnauthorized: true, timeout: timeoutMs },
       () => {
         const cert = socket.getPeerCertificate();
         if (!cert || Object.keys(cert).length === 0) return finish(null);
