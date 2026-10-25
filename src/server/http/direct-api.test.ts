@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { handleDirectApiRequest } from "./direct-api";
+
+vi.mock("./health-handler", () => ({
+  handleHealthRequest: async () => Response.json({ status: "ok" }),
+}));
 
 describe("direct API dispatch", () => {
   it("handles the health endpoint without entering the application router", async () => {

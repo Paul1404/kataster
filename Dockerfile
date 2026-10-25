@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # 1. Build the app (all deps).
-FROM oven/bun:1.3.14 AS builder
+FROM oven/bun:1.4.3 AS builder
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
@@ -9,14 +9,14 @@ COPY . .
 RUN bun run build
 
 # 2. Production-only dependencies.
-FROM oven/bun:1.3.14 AS prod-deps
+FROM oven/bun:1.4.3 AS prod-deps
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
 # 3. Runtime image. Same image runs both the web app and the worker
 #    (different start commands per Railway service).
-FROM oven/bun:1.3.14 AS runner
+FROM oven/bun:1.4.3 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 # Both services idle most of the time: trade a little GC frequency for a

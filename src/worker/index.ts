@@ -21,6 +21,8 @@ import { periodOf } from "../server/costs/margin";
 import { assertEncryptionKey } from "../server/crypto/secrets";
 import { db } from "../server/db";
 import { assets } from "../server/db/schema/assets";
+import { createHealthHandler } from "../server/http/health-handler";
+import { checkDependencies } from "../server/http/readiness";
 import { readMailCursor, writeMailCursor } from "../server/mail/cursor";
 import { pruneMailEvents, syncMailEvents } from "../server/mail/events-sync";
 import { fetchRspamdHistory } from "../server/mail/rspamd";
@@ -345,7 +347,28 @@ async function main() {
     console.log(`[worker] listening on "${MAINTENANCE_QUEUE}", concurrency=1`);
   });
 
+  await Promise.all([
+    worker.waitUntilReady(),
+    mailWorker.waitUntilReady(),
+    maintenanceWorker.waitUntilReady(),
+  ]);
+  const readiness = createHealthHandler(async () => {
+    if (![worker, mailWorker, maintenanceWorker].every((item) => item.isRunning())) {
+      throw new Error("Worker is not running");
+    }
+    await checkDependencies();
+  });
+  const healthServer = Bun.serve({
+    port: Number(process.env.PORT ?? 3000),
+    fetch: (request) =>
+      new URL(request.url).pathname === "/api/health"
+        ? readiness()
+        : new Response("Not found", { status: 404 }),
+  });
+
   const shutdown = async () => {
+    healthServer.stop();
+    clearInterval(heartbeat);
     console.log("[worker] shutting down");
     await Promise.all([worker.close(), mailWorker.close(), maintenanceWorker.close()]);
     process.exit(0);

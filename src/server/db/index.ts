@@ -2,7 +2,11 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 3_000,
+  query_timeout: 2_000,
+});
 
 // Postgres NOTICE messages (e.g. 42P07 "already exists") are not errors. Swallow
 // them so they never surface as log noise.
