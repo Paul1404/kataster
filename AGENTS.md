@@ -233,5 +233,15 @@ push workflow and do not cancel its main-branch runs. PR branch cleanup never
 justifies bypassing CI. Public repositories also enforce CodeQL results on main.
 Container security builds the production image and scans OS and library packages.
 Retain the complete report. Fixable HIGH/CRITICAL findings block delivery;
-upstream-unfixed findings remain visible and require explicit review. Do not add
+findings without a listed fixed package for the current distribution remain visible and require explicit review. Do not add
 blanket scanner ignores or weaken these gates to make a release pass.
+
+## Runtime package pruning
+
+`scripts/prune-runtime-packages.sh` runs only during image construction, after
+all native packages are installed. Its simulated purge accepts only an explicit
+package allowlist and keeps dpkg dependencies valid. Do not add forced dependency
+removal, delete package metadata or hide scanner findings. Keep shell/coreutils,
+CA certificates and required C/C++ libraries. CI verifies the pruned image as its
+non-root user; exercise the real PDF/image tools and startup workflows before
+merging. Rebuild images for package updates, never mutate a running deployment.
