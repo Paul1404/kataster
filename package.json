@@ -57,6 +57,7 @@
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "react-is": "19.3.1",
     "react-leaflet": "^5.0.0",
     "recharts": "^3.9.0",
     "sonner": "^2.0.7",
