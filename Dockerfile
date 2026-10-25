@@ -12,7 +12,7 @@ RUN bun run build
 FROM oven/bun:1.4.4 AS prod-deps
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile --production --omit=peer
 
 # 3. Runtime image. Same image runs both the web app and the worker
 #    (different start commands per Railway service).
@@ -31,4 +31,5 @@ COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/server.ts ./server.ts
 EXPOSE 3000
+USER bun
 CMD ["bun", "run", "server.ts"]
