@@ -236,6 +236,13 @@ export async function ingestHostSnapshot(input: unknown, actor: string) {
       { resourceIds: stale.map((r) => r.id), status: "decommissioned", actor },
       tx,
     );
+    const staleAddresses = stale.filter((r) => r.type === "mailbox").map((r) => r.externalId);
+    if (staleAddresses.length)
+      await tx
+        .update(mailboxes)
+        .set({ active: false })
+        .where(and(eq(mailboxes.assetId, asset!.id), inArray(mailboxes.address, staleAddresses)));
+
     for (const [provider, amountCents, resourceId, label] of [
       ["contabo", snapshot.hostMonthlyCents, hostId, `Contabo ${snapshot.hostname}`],
       [

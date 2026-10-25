@@ -50,6 +50,7 @@ jobs:
         run: |
           docker run --rm --network host --env DATABASE_URL production-security:${{ github.sha }} bun run src/server/db/migrate.ts
           docker run --rm --network host --env DATABASE_URL --env REDIS_URL --env LFIO_ENCRYPTION_KEY --env BETTER_AUTH_SECRET --env BETTER_AUTH_URL production-security:${{ github.sha }} bun scripts/smoke-runtime-services.ts
+          docker run --rm --network host --env DATABASE_URL --env REDIS_URL production-security:${{ github.sha }} bun scripts/smoke-host-inventory.ts
       - name: Scan OS and application packages
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:

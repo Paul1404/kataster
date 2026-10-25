@@ -23,7 +23,7 @@ customer owns each one, what it costs, and what is invoiced for it.
 
 - Connectors live in `src/server/connectors/` and declare configuration plus a
   health check. `kind` is `probe` (one service's health) or `source` (a provider
-  account sync feeding inventory and cost); the Prüfungen page lists them apart.
+  account sync feeding inventory and cost); the Datenquellen page exposes only FinOps inventory/cost sources.
 - Credentials are encrypted at rest. Never log or expose decrypted values.
 - The web service and BullMQ worker share one image but have separate Railway
   start commands and service settings.
@@ -119,16 +119,9 @@ customer owns each one, what it costs, and what is invoiced for it.
   `INVOICE_SENDER_*` environment variables, never from the database. A VAT rate
   of 0 prints the small-business note (Paragraph 19 UStG).
 
-- Outbound notifications live in `src/server/notifications/`. `events.ts` is the
-  pure engine (state plus enabled rules in, `{ruleKind, dedupeKey, title, body}`
-  out) and is the only place alert wording belongs. `deliver.ts` claims a
-  `notification_deliveries` row by its unique `dedupe_key` before it POSTs, so
-  an event can never be sent twice; a failed attempt keeps its row and releases
-  the key for a later retry. The webhook body carries `title`, `message`, `text`
-  and `content` at once, which makes one URL work for ntfy, Slack and Discord.
-  Incidents notify in real time from `persistCheckResult`; expiry, worker_down
-  and billing_incomplete run once a day on the existing maintenance queue. Do
-  not add a new always-on poll for alerting.
+- Legacy notification implementation and storage remain under
+  `src/server/notifications/` for historical reference. Active FinOps code does
+  not collect monitoring events, schedule notification digests or deliver alarms.
 
 WordPress probes request only `_fields=name,namespaces` from the REST index.
 Preserve custom API paths and query-based `rest_route` parameters.
