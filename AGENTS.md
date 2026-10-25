@@ -173,3 +173,11 @@ Do not treat a build or deployment acknowledgement as proof of live behavior.
 Update this file when a verified, durable repository rule changes. Keep it
 concise and move detailed explanations to `docs/`. Keep `CLAUDE.md` as the
 compatibility import unless Claude-specific guidance is genuinely required.
+
+## Readiness
+
+`/api/health` performs bounded, read-only dependency checks and returns 503 on
+failure with no connection details. Responses disable caching.
+Both PostgreSQL and Redis must answer before the app is ready.
+The worker exposes private `/api/health` on `$PORT` only after all three workers
+are ready; it also checks PostgreSQL, Redis and the running worker loops.
