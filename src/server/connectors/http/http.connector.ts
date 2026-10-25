@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { connect as tlsConnect } from "node:tls";
 import * as v from "valibot";
 import { defineConnector } from "../define";
@@ -20,6 +21,7 @@ export function readCertificate(
   port: number,
   timeoutMs: number,
 ): Promise<ObservedCertificate | null> {
+  const hostname = host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
   return new Promise((resolve) => {
     let done = false;
     const finish = (value: ObservedCertificate | null) => {
@@ -33,7 +35,14 @@ export function readCertificate(
       resolve(value);
     };
     const socket = tlsConnect(
-      { host, port, servername: host, rejectUnauthorized: true, timeout: timeoutMs },
+      {
+        host: hostname,
+        port,
+        // TLS SNI is a DNS hostname. Bun rejects an IP literal here.
+        servername: isIP(hostname) ? undefined : hostname,
+        rejectUnauthorized: true,
+        timeout: timeoutMs,
+      },
       () => {
         const cert = socket.getPeerCertificate();
         if (!cert || Object.keys(cert).length === 0) return finish(null);

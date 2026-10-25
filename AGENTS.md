@@ -199,3 +199,10 @@ version 3; CI and production must use a compatible runtime.
 `bunx drizzle-kit export --sql` validates loading the actual TypeScript schema
 without connecting to a database; run it alongside the transform regression
 tests after changing this loader override.
+
+## TLS certificate probes
+
+Certificate metadata probes use authenticated TLS. Send SNI only for DNS names,
+never IP literals, and strip URL brackets from IPv6 hosts before connecting.
+The connector regression exercises both Node (Vitest) and Bun (production)
+against a real local TLS server; a rejected connection must actually reach it.
