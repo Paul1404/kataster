@@ -11,7 +11,7 @@ export const PALETTE_PAGES = [
   { to: "/billing", label: "Abrechnung" },
   { to: "/costs", label: "Kosten" },
   { to: "/domains", label: "Mail-Domains" },
-  { to: "/assets", label: "Prüfungen" },
+  { to: "/sources", label: "Datenquellen" },
   { to: "/hosts", label: "Hosts" },
   { to: "/ci", label: "Domains" },
   { to: "/connections", label: "Verbindungen" },
@@ -93,20 +93,6 @@ export function buildGroups(query: string, data: PaletteData): PaletteGroup[] {
         label: r.name,
         typeLabel: r.type ? resourceTypeLabel(r.type) : "Objekt",
         sublabel: r.ownerName ?? r.externalId,
-      })),
-    });
-  }
-
-  if (data.assets.length > 0) {
-    groups.push({
-      key: "assets",
-      label: "Prüfungen",
-      rows: data.assets.map((a) => ({
-        id: a.id,
-        kind: "asset",
-        label: a.name,
-        typeLabel: "Prüfung",
-        sublabel: a.ownerName ?? a.externalId,
       })),
     });
   }

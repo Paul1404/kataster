@@ -37,12 +37,23 @@ export const Route = createFileRoute("/_app/costs")({
   component: CostsPage,
 });
 
-const PROVIDERS = ["aws", "hetzner", "railway", "mailcow", "other"] as const;
+const PROVIDERS = [
+  "contabo",
+  "backblaze",
+  "aws",
+  "railway",
+  "hetzner",
+  "mailcow",
+  "other",
+] as const;
 const PROVIDER_LABEL: Record<string, string> = {
   aws: "AWS",
   hetzner: "Hetzner",
   railway: "Railway",
   mailcow: "Mailcow",
+  contabo: "Contabo",
+  stalwart: "Stalwart",
+  backblaze: "Backblaze B2",
   other: "Sonstige",
 };
 const providerLabel = (p: string) => PROVIDER_LABEL[p] ?? p;

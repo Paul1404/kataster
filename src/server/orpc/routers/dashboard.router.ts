@@ -11,6 +11,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { FINOPS_SOURCE_IDS } from "../../../lib/finops-sources";
 import { loadMarginReport, loadReadiness } from "../../billing/service";
 import type { CheckStatus } from "../../connectors/types";
 import { periodOf } from "../../costs/margin";
@@ -69,7 +70,7 @@ export const dashboardRouter = {
         >`(select message from ${checkResults} where ${checkResults.assetId} = ${assets}."id" order by ${checkResults.checkedAt} desc limit 1)`,
       })
       .from(assets)
-      .where(inArray(assets.lastStatus, ["down", "degraded"]))
+      .where(and(eq(assets.enabled, true), inArray(assets.lastStatus, ["down", "degraded"])))
       .orderBy(desc(assets.lastCheckedAt))
       .limit(10);
 
@@ -77,7 +78,9 @@ export const dashboardRouter = {
     const mailcowAssets = await db
       .select({ id: assets.id, name: assets.name, status: assets.lastStatus })
       .from(assets)
-      .where(eq(assets.connectorId, "mailcow"));
+      .where(
+        and(inArray(assets.connectorId, ["mailcow", "managed-host"]), eq(assets.enabled, true)),
+      );
 
     const mailcow = await Promise.all(
       mailcowAssets.map(async (asset) => {
@@ -408,87 +411,13 @@ export const dashboardRouter = {
   // monitoring strip. One payload so the dashboard is a single round trip.
   cockpit: authed.handler(async () => {
     const period = periodOf(new Date());
-    const soon = new Date(Date.now() + EXPIRY_SOON_DAYS * 86_400_000);
-
-    const [
-      margin,
-      readiness,
-      heartbeat,
-      statusCounts,
-      failing,
-      mailcowAssets,
-      expiringDomains,
-      expiringCerts,
-      openIncidents,
-      staleRows,
-      inventoryRows,
-      changeRows,
-    ] = await Promise.all([
+    const [margin, readiness, sourceRows, inventoryRows, changeRows] = await Promise.all([
       loadMarginReport(period),
       loadReadiness(period),
-      readWorkerHeartbeat(),
       db
-        .select({ status: assets.lastStatus, count: sql<number>`count(*)::int` })
+        .select({ status: assets.lastStatus, checkedAt: assets.lastCheckedAt })
         .from(assets)
-        .groupBy(assets.lastStatus),
-      db
-        .select({
-          id: assets.id,
-          name: assets.name,
-          target: assets.target,
-          lastStatus: assets.lastStatus,
-          lastLatencyMs: assets.lastLatencyMs,
-          lastCheckedAt: assets.lastCheckedAt,
-        })
-        .from(assets)
-        .where(inArray(assets.lastStatus, ["down", "degraded"]))
-        .orderBy(desc(assets.lastCheckedAt))
-        .limit(6),
-      db
-        .select({ id: assets.id, name: assets.name, status: assets.lastStatus })
-        .from(assets)
-        .where(eq(assets.connectorId, "mailcow")),
-      db
-        .select({ name: domains.name, expiresAt: domains.registryExpiresAt })
-        .from(domains)
-        .where(
-          and(
-            eq(domains.registered, true),
-            eq(domains.decommissioned, false),
-            isNotNull(domains.registryExpiresAt),
-            lte(domains.registryExpiresAt, soon),
-          ),
-        ),
-      db
-        .select({ name: certificates.commonName, expiresAt: certificates.notAfter })
-        .from(certificates)
-        .where(and(isNotNull(certificates.notAfter), lte(certificates.notAfter, soon))),
-      db
-        .select({
-          id: incidents.id,
-          assetId: incidents.assetId,
-          assetName: assets.name,
-          status: incidents.status,
-          startedAt: incidents.startedAt,
-          acknowledgedAt: incidents.acknowledgedAt,
-        })
-        .from(incidents)
-        .leftJoin(assets, eq(incidents.assetId, assets.id))
-        .where(isNull(incidents.endedAt))
-        .orderBy(asc(incidents.startedAt))
-        .limit(10),
-      db
-        .select({ id: assets.id })
-        .from(assets)
-        .where(
-          and(
-            eq(assets.enabled, true),
-            or(
-              isNull(assets.lastCheckedAt),
-              sql`${assets.lastCheckedAt} < now() - make_interval(secs => greatest(${assets.intervalSeconds} * 2, 120))`,
-            ),
-          ),
-        ),
+        .where(and(eq(assets.enabled, true), inArray(assets.connectorId, [...FINOPS_SOURCE_IDS]))),
       db
         .select({ type: resources.type, count: sql<number>`count(*)::int` })
         .from(resources)
@@ -507,46 +436,10 @@ export const dashboardRouter = {
           createdAt: resourceHistory.createdAt,
         })
         .from(resourceHistory)
-        .leftJoin(resources, eq(resourceHistory.resourceId, resources.id))
+        .leftJoin(resources, eq(resources.id, resourceHistory.resourceId))
         .orderBy(desc(resourceHistory.createdAt))
-        .limit(10),
+        .limit(12),
     ]);
-
-    const totals: Record<CheckStatus, number> & { total: number } = {
-      up: 0,
-      down: 0,
-      degraded: 0,
-      unknown: 0,
-      total: 0,
-    };
-    for (const row of statusCounts) {
-      totals[row.status] = row.count;
-      totals.total += row.count;
-    }
-
-    const mailcow = await Promise.all(
-      mailcowAssets.map(async (asset) => {
-        const [latest] = await db
-          .select({ metadata: checkResults.metadata })
-          .from(checkResults)
-          .where(eq(checkResults.assetId, asset.id))
-          .orderBy(desc(checkResults.checkedAt))
-          .limit(1);
-        return { ...asset, metadata: latest?.metadata ?? null };
-      }),
-    );
-
-    // Days until the nearest renewal across both kinds, so the action row can
-    // say how urgent the whole group is.
-    const nextExpiry = [...expiringDomains, ...expiringCerts]
-      .map((r) => (r.expiresAt ? new Date(r.expiresAt).getTime() : null))
-      .filter((t): t is number => t != null)
-      .sort((a, b) => a - b)[0];
-    const expiringSoonestDays =
-      nextExpiry == null ? null : Math.floor((nextExpiry - Date.now()) / 86_400_000);
-
-    const uncoveredPoolCents = readiness.uncoveredPools.reduce((s, p) => s + p.amountCents, 0);
-
     return {
       period,
       money: {
@@ -560,19 +453,14 @@ export const dashboardRouter = {
         unassignedCostCents: readiness.unassignedCostCents,
         unpricedCount: readiness.unpriced.length,
         uncoveredPoolCount: readiness.uncoveredPools.length,
-        uncoveredPoolCents,
-        expiringDomainCount: expiringDomains.length,
-        expiringCertCount: expiringCerts.length,
-        expiringSoonestDays,
-        openIncidentCount: openIncidents.length,
-        staleCheckCount: staleRows.length,
-        workerAlive: heartbeat != null && Date.now() - heartbeat < WORKER_ALIVE_MS,
+        uncoveredPoolCents: readiness.uncoveredPools.reduce((sum, p) => sum + p.amountCents, 0),
+        incompleteSourceCount: sourceRows.filter(
+          (r) =>
+            r.status !== "up" || !r.checkedAt || Date.now() - r.checkedAt.getTime() > 3_600_000,
+        ).length,
       },
-      workerLastSeenAt: heartbeat ? new Date(heartbeat) : null,
       inventory: inventoryRows.sort((a, b) => b.count - a.count || a.type.localeCompare(b.type)),
       changes: changeRows,
-      incidents: openIncidents,
-      monitoring: { totals, failing, mailcow },
     };
   }),
 };

@@ -140,6 +140,7 @@ export const RESOURCE_TYPE_LABEL: Record<string, string> = {
   mail_domain: "Mail-Domain",
   mailbox: "Postfach",
   container: "Container",
+  backup: "Backup",
   host: "Host",
   vps: "VPS",
   railway_project: "Railway-Projekt",

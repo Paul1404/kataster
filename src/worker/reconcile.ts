@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
+import { isFinopsSource } from "../lib/finops-sources";
 import { db } from "../server/db";
 import { assets } from "../server/db/schema/assets";
 import { checksQueue } from "../server/queue/checks.queue";
 import { mailPollQueue } from "../server/queue/mail-poll.queue";
-import { scheduleAsset, scheduleMailPoll } from "../server/queue/schedule";
+import { scheduleAsset } from "../server/queue/schedule";
 
 /**
  * Reconcile BullMQ job schedulers with the database on worker boot. Postgres is
@@ -23,12 +24,9 @@ export async function reconcileSchedulers(): Promise<void> {
   const wanted = new Set<string>();
   const wantedMail = new Set<string>();
   for (const asset of rows) {
+    if (!isFinopsSource(asset.connectorId)) continue;
     wanted.add(`asset:${asset.id}`);
     await scheduleAsset(asset.id, asset.intervalSeconds);
-    if (asset.connectorId === "mailcow") {
-      wantedMail.add(`mailpoll:${asset.id}`);
-      await scheduleMailPoll(asset.id);
-    }
   }
 
   const existing = await checksQueue.getJobSchedulers();

@@ -5,6 +5,7 @@ export * from "./certs";
 export * from "./connections";
 export * from "./costs";
 export * from "./customers";
+export * from "./host-inventory";
 export * from "./incidents";
 export * from "./invoices";
 export * from "./mail";

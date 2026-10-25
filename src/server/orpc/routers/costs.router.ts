@@ -11,7 +11,16 @@ import { resources } from "../../db/schema/resources";
 import { authed } from "../base";
 
 const Period = v.pipe(v.string(), v.regex(/^\d{4}-\d{2}$/, "Period must be YYYY-MM"));
-const Provider = v.picklist(["aws", "hetzner", "railway", "mailcow", "other"]);
+const Provider = v.picklist([
+  "aws",
+  "hetzner",
+  "railway",
+  "mailcow",
+  "other",
+  "contabo",
+  "stalwart",
+  "backblaze",
+]);
 
 // The stored label is the upsert key of a synced pool and stays as it is; only
 // the display is German. A resource-scoped pool (a Railway project, a Hetzner

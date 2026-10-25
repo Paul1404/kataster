@@ -8,7 +8,7 @@ export type ActionSeverity = "critical" | "warning" | "info";
 
 /** Where a row sends the operator. Only routes that actually fix the problem. */
 export interface ActionLink {
-  to: "/objects" | "/billing" | "/costs" | "/ci" | "/assets";
+  to: "/objects" | "/billing" | "/costs" | "/ci" | "/sources";
   search?: { owner?: string; type?: string; sort?: string };
 }
 
@@ -27,13 +27,7 @@ export interface CockpitAttention {
   unpricedCount: number;
   uncoveredPoolCount: number;
   uncoveredPoolCents: number;
-  expiringDomainCount: number;
-  expiringCertCount: number;
-  /** Days until the nearest expiry, negative when overdue, null when nothing expires. */
-  expiringSoonestDays: number | null;
-  openIncidentCount: number;
-  staleCheckCount: number;
-  workerAlive: boolean;
+  incompleteSourceCount: number;
 }
 
 const SEVERITY_RANK: Record<ActionSeverity, number> = { critical: 0, warning: 1, info: 2 };
@@ -50,46 +44,13 @@ function plural(count: number, one: string, many: string): string {
 export function buildActionItems(a: CockpitAttention): ActionItem[] {
   const items: ActionItem[] = [];
 
-  if (!a.workerAlive) {
+  if (a.incompleteSourceCount > 0) {
     items.push({
-      id: "worker",
-      severity: "critical",
-      title: "Worker läuft nicht",
-      detail: "Ohne Worker laufen keine Prüfungen und keine Synchronisierung.",
-      link: { to: "/assets" },
-    });
-  }
-
-  if (a.openIncidentCount > 0) {
-    items.push({
-      id: "incidents",
-      severity: "critical",
-      title: `${plural(a.openIncidentCount, "offene Störung", "offene Störungen")}`,
-      detail: "Prüfungen melden seit einer Weile einen Ausfall.",
-      link: { to: "/assets" },
-    });
-  }
-
-  const expirySeverity: ActionSeverity =
-    a.expiringSoonestDays !== null && a.expiringSoonestDays <= 14 ? "critical" : "warning";
-
-  if (a.expiringDomainCount > 0) {
-    items.push({
-      id: "domains-expiring",
-      severity: expirySeverity,
-      title: `${plural(a.expiringDomainCount, "Domain läuft", "Domains laufen")} bald ab`,
-      detail: expiryDetail(a.expiringSoonestDays),
-      link: { to: "/ci" },
-    });
-  }
-
-  if (a.expiringCertCount > 0) {
-    items.push({
-      id: "certs-expiring",
-      severity: expirySeverity,
-      title: `${plural(a.expiringCertCount, "Zertifikat läuft", "Zertifikate laufen")} bald ab`,
-      detail: expiryDetail(a.expiringSoonestDays),
-      link: { to: "/objects", search: { type: "acm_cert" } },
+      id: "source-data",
+      severity: "warning",
+      title: `${plural(a.incompleteSourceCount, "Datenquelle unvollständig", "Datenquellen unvollständig")}`,
+      detail: "Kosten oder Inventar sind noch nicht vollständig abgeglichen.",
+      link: { to: "/sources" },
     });
   }
 
@@ -113,16 +74,6 @@ export function buildActionItems(a: CockpitAttention): ActionItem[] {
     });
   }
 
-  if (a.staleCheckCount > 0) {
-    items.push({
-      id: "stale-checks",
-      severity: "warning",
-      title: `${plural(a.staleCheckCount, "veraltete Prüfung", "veraltete Prüfungen")}`,
-      detail: "Seit mehr als dem doppelten Intervall kein Ergebnis.",
-      link: { to: "/assets" },
-    });
-  }
-
   if (a.uncoveredPoolCount > 0) {
     items.push({
       id: "uncovered-pools",
@@ -140,11 +91,4 @@ export function buildActionItems(a: CockpitAttention): ActionItem[] {
         SEVERITY_RANK[a1.item.severity] - SEVERITY_RANK[b1.item.severity] || a1.index - b1.index,
     )
     .map((entry) => entry.item);
-}
-
-function expiryDetail(days: number | null): string {
-  if (days === null) return "Ablaufdatum unbekannt.";
-  if (days < 0) return "Die früheste Verlängerung ist überfällig.";
-  if (days === 0) return "Die früheste Verlängerung ist heute fällig.";
-  return `Die früheste Verlängerung ist in ${days} Tagen fällig.`;
 }

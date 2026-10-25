@@ -6,6 +6,7 @@
 import { Worker } from "bullmq";
 import { eq } from "drizzle-orm";
 import * as v from "valibot";
+import { isFinopsSource } from "../lib/finops-sources";
 import { suppressDecommissionedFindings, syncAwsInventory } from "../server/aws/sync";
 import { applyOwnerSuggestions } from "../server/billing/service";
 import { type CertInput, syncCertificates } from "../server/certs/sync";
@@ -23,11 +24,7 @@ import { db } from "../server/db";
 import { assets } from "../server/db/schema/assets";
 import { createHealthHandler } from "../server/http/health-handler";
 import { checkDependencies } from "../server/http/readiness";
-import { readMailCursor, writeMailCursor } from "../server/mail/cursor";
-import { pruneMailEvents, syncMailEvents } from "../server/mail/events-sync";
-import { fetchRspamdHistory } from "../server/mail/rspamd";
 import { syncMailcowInventory } from "../server/mail/sync";
-import { runNotificationDigest } from "../server/notifications/digest";
 import { CHECKS_QUEUE, type CheckJobData } from "../server/queue/checks.queue";
 import { redisConnection } from "../server/queue/connection";
 import { writeWorkerHeartbeat } from "../server/queue/heartbeat";
@@ -55,11 +52,11 @@ const MAIL_POLL_CONCURRENCY = Number(process.env.MAIL_POLL_CONCURRENCY ?? 1);
 // Set to "false" to stop the worker from assigning owners on its own.
 const BILLING_AUTO_ASSIGN = process.env.BILLING_AUTO_ASSIGN !== "false";
 const HARD_TIMEOUT_MS = 90_000;
-const MAIL_POLL_TIMEOUT_MS = 15_000;
-const MAIL_EVENTS_RETENTION_DAYS = Number(process.env.MAIL_EVENTS_RETENTION_DAYS ?? 7);
+const _MAIL_POLL_TIMEOUT_MS = 15_000;
+const _MAIL_EVENTS_RETENTION_DAYS = Number(process.env.MAIL_EVENTS_RETENTION_DAYS ?? 7);
 // Prune retention roughly once an hour (every Nth ~10s poll), not on every run.
-const PRUNE_EVERY_RUNS = 360;
-let mailPollRuns = 0;
+const _PRUNE_EVERY_RUNS = 360;
+const _mailPollRuns = 0;
 // Sweep CIs/facets no source has confirmed in this long (a removed host/domain).
 const CI_STALE_DAYS = 3;
 const PRUNE_CI_EVERY_RUNS = 500;
@@ -67,7 +64,7 @@ let checkRuns = 0;
 
 async function runCheck(assetId: string): Promise<void> {
   const asset = await db.query.assets.findFirst({ where: eq(assets.id, assetId) });
-  if (!asset?.enabled) return;
+  if (!asset?.enabled || !isFinopsSource(asset.connectorId)) return;
 
   const connector = requireConnector(asset.connectorId);
   let config = v.parse(connector.configSchema, asset.config) as Record<string, unknown>;
@@ -245,43 +242,8 @@ async function runCheck(assetId: string): Promise<void> {
 // Poll a mailcow server's rspamd history for new mail events and persist them.
 // The Redis cursor makes the first poll seed from "now" (no backlog burst); later
 // polls ingest only events newer than the cursor.
-async function runMailPoll(assetId: string): Promise<void> {
-  const asset = await db.query.assets.findFirst({ where: eq(assets.id, assetId) });
-  if (!asset?.enabled || asset.connectorId !== "mailcow" || !asset.connectionId) return;
-
-  const secrets = await loadConnectionSecret(asset.connectionId);
-  const apiKey = typeof secrets.apiKey === "string" ? secrets.apiKey : "";
-  if (!apiKey) return;
-
-  const records = await fetchRspamdHistory(
-    asset.target,
-    apiKey,
-    AbortSignal.timeout(MAIL_POLL_TIMEOUT_MS),
-  );
-  if (records.length === 0) return;
-
-  const cursor = await readMailCursor(assetId);
-  if (cursor == null) {
-    // Cold start: seed the cursor to the newest record, ingest nothing.
-    const newest = records.reduce((m, r) => Math.max(m, r.occurredAtMs), 0);
-    await writeMailCursor(assetId, newest);
-    return;
-  }
-
-  const { inserted, overflow, maxOccurredAtMs } = await syncMailEvents(assetId, records, cursor);
-  if (maxOccurredAtMs > cursor) await writeMailCursor(assetId, maxOccurredAtMs);
-  if (overflow > 0) {
-    console.warn(`[worker] mail poll ${assetId}: capped ${overflow} extra recipient(s)`);
-  }
-  if (inserted > 0) {
-    console.log(`[worker] mail poll ${assetId}: ingested ${inserted} event(s)`);
-  }
-
-  mailPollRuns += 1;
-  if (mailPollRuns % PRUNE_EVERY_RUNS === 0) {
-    const removed = await pruneMailEvents(MAIL_EVENTS_RETENTION_DAYS);
-    if (removed > 0) console.log(`[worker] pruned ${removed} old mail event(s)`);
-  }
+async function runMailPoll(_assetId: string): Promise<void> {
+  // Legacy queued jobs are acknowledged without collecting monitoring data.
 }
 
 async function main() {
@@ -325,13 +287,6 @@ async function main() {
   const maintenanceWorker = new Worker<MaintenanceJobData>(
     MAINTENANCE_QUEUE,
     async (job) => {
-      if (job.data.task === "notification-digest") {
-        const digest = await runNotificationDigest();
-        console.log(
-          `[worker] notification digest: ${digest.evaluated} event(s) evaluated, ${digest.sent} sent, ${digest.duplicates} already known, ${digest.failed} failed`,
-        );
-        return;
-      }
       if (job.data.task !== "compact-check-results") return;
       const result = await compactCheckResults();
       console.log(

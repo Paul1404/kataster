@@ -1,13 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  Activity,
   Boxes,
+  Database,
   Globe,
   KeyRound,
   LayoutDashboard,
   LogOut,
   Mailbox,
-  Map as MapIcon,
   MapPin,
   Receipt,
   ReceiptEuro,
@@ -24,14 +23,13 @@ import { signOut } from "@/lib/auth-client";
 
 const NAV = [
   { to: "/dashboard", label: "Übersicht", icon: LayoutDashboard },
-  { to: "/map", label: "Karte", icon: MapIcon },
   { to: "/customers", label: "Kunden", icon: MapPin },
   { to: "/objects", label: "Objekte", icon: Boxes },
   { to: "/billing", label: "Abrechnung", icon: Receipt },
   { to: "/invoices", label: "Rechnungen", icon: ReceiptEuro },
   { to: "/costs", label: "Kosten", icon: Wallet },
   { to: "/domains", label: "Mail-Domains", icon: Mailbox },
-  { to: "/assets", label: "Prüfungen", icon: Activity },
+  { to: "/sources", label: "Datenquellen", icon: Database },
   { to: "/hosts", label: "Hosts", icon: Server },
   { to: "/ci", label: "Domains", icon: Globe },
   { to: "/connections", label: "Verbindungen", icon: KeyRound },
@@ -54,9 +52,7 @@ export function AppShell({ userEmail, children }: { userEmail: string; children:
           <BrandMark className="size-7" />
           <div className="leading-tight">
             <div className="text-sm font-semibold tracking-tight">Kataster</div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Register
-            </div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">FinOps</div>
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-3 py-2">

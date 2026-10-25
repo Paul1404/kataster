@@ -41,7 +41,7 @@ function DomainsPage() {
     <div>
       <PageHeader
         title="Domains"
-        description="Jede Domain als ein Configuration Item, zusammengeführt aus Registrar, DNS, SES, CloudFront, ACM und Mailcow."
+        description="Jede Domain als ein Configuration Item, zusammengeführt aus Registrar, DNS, SES, CloudFront, ACM und Mailinventar."
       />
       <div className="space-y-4 p-8">
         {domains.length > 0 && (

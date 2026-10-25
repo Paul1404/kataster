@@ -1,0 +1,17 @@
+[Unit]
+Description=Kataster host inventory export
+After=network-online.target stalwart.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/libexec/kataster-inventory.py
+WorkingDirectory=/
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=180
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes

@@ -85,7 +85,7 @@ export function CommandPalette() {
         navigate({ to: "/ci/$id", params: { id: row.id } });
         return;
       case "asset":
-        navigate({ to: "/assets/$assetId", params: { assetId: row.id } });
+        navigate({ to: "/sources" });
         return;
       case "page": {
         const page = PALETTE_PAGES.find((p) => p.to === row.id);

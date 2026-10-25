@@ -7,6 +7,7 @@ import type { CheckResult } from "../types";
 // layered on in the cost phase.
 
 const RailwayConfig = v.object({
+  coldFallbackProjectIds: v.optional(v.array(v.string()), []),
   timeoutMs: v.optional(
     v.pipe(v.number(), v.minValue(1000), v.maxValue(60_000), v.title("Timeout (ms)")),
     15_000,
@@ -205,13 +206,18 @@ export const railwayConnector = defineConnector({
       return {
         status: "down",
         latencyMs,
-        message: `Unerwartete Antwort (${res.status})`,
+        message: (json as any)?.errors?.some((e: { message?: string }) =>
+          e.message?.includes("Not Authorized"),
+        )
+          ? "Railway-Zugang nicht mehr gültig; Verbindung erneuern"
+          : `Abgleich fehlgeschlagen (${res.status})`,
         raw: { httpStatus: res.status, errors: (json as any)?.errors ?? null },
       };
     }
 
     const projects = parseRailwayProjects(json);
-    const serviceCount = projects.reduce((s, p) => s + p.services.length, 0);
+    const runtimeProjects = projects.filter((p) => !config.coldFallbackProjectIds.includes(p.id));
+    const serviceCount = runtimeProjects.reduce((s, p) => s + p.services.length, 0);
 
     // Optional: estimated per-project spend for the current billing cycle. A cost
     // failure (rate limit, permissions) must not fail the inventory check, so it's
@@ -234,10 +240,10 @@ export const railwayConnector = defineConnector({
     return {
       status: "up",
       latencyMs,
-      message: `${projects.length} Projekte · ${serviceCount} Services`,
+      message: `${runtimeProjects.length} aktive Projekte, ${serviceCount} Services, ${projects.length - runtimeProjects.length} zurückgehaltene Fallback-Projekte`,
       raw: {
         ...(cost ? { cost } : {}),
-        projects: { count: projects.length, list: projects },
+        projects: { count: runtimeProjects.length, list: runtimeProjects },
         metrics: [
           {
             key: "projects",

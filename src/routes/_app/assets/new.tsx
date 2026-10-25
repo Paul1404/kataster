@@ -1,19 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ConnectorForm } from "@/components/assets/connector-form";
-import { PageHeader } from "@/components/page-header";
-
+import { createFileRoute, redirect } from "@tanstack/react-router";
 export const Route = createFileRoute("/_app/assets/new")({
-  component: NewAssetPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/sources" });
+  },
 });
-
-function NewAssetPage() {
-  return (
-    <div>
-      <PageHeader
-        title="Prüfung hinzufügen"
-        description="Connector wählen und festlegen, was überwacht werden soll."
-      />
-      <ConnectorForm />
-    </div>
-  );
-}

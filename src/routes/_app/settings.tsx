@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Check, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { NotificationSettings } from "@/components/notifications/notification-settings";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,12 +24,8 @@ export const Route = createFileRoute("/_app/settings")({
 function SettingsPage() {
   return (
     <div>
-      <PageHeader
-        title="Einstellungen"
-        description="Benachrichtigungen, Zugriffstoken und Integrationen."
-      />
+      <PageHeader title="Einstellungen" description="Zugriffstoken und Integrationen." />
       <div className="space-y-8 p-8">
-        <NotificationSettings />
         <McpTokens />
         <McpAuditLog />
       </div>
@@ -195,7 +190,11 @@ function McpTokens() {
             >
               <span className="min-w-0 flex-1 truncate font-medium">{t.name}</span>
               <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {t.scopes.includes("write") ? "Lesen + Schreiben" : "Nur Lesen"}
+                {t.scopes.includes("write")
+                  ? "Lesen + Schreiben"
+                  : t.scopes.some((scope) => scope.startsWith("host:"))
+                    ? "Nur Hostinventar"
+                    : "Nur Lesen"}
               </span>
               <code className="shrink-0 text-xs text-muted-foreground">{t.tokenPrefix}</code>
               <span className="hidden w-32 shrink-0 text-right text-xs text-muted-foreground sm:block">

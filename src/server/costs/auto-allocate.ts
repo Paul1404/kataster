@@ -220,7 +220,11 @@ async function refreshAllocationsInTx(db: Tx, period: string): Promise<void> {
     const containers = autoResources.filter(
       (r) => r.parentResourceId === hostId && r.type === "container",
     );
-    if (containers.length > 0) hostServed.set(hostId, containers);
+    const hostMailboxes = mailboxes.filter((r) => r.parentResourceId === hostId);
+    // A mixed host serves both websites and mail. Do not silently drop mail cost
+    // attribution merely because this host also has containers.
+    if (containers.length > 0 || hostMailboxes.length > 0)
+      hostServed.set(hostId, [...containers, ...hostMailboxes]);
     else if (mailHostIds.has(hostId) && mailboxes.length > 0) hostServed.set(hostId, mailboxes);
     else {
       const self = byId.get(hostId);

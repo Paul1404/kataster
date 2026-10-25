@@ -1,6 +1,6 @@
 import { boolean, index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-export type McpScope = "read" | "write";
+export type McpScope = "read" | "write" | `host:${string}`;
 
 // Bearer tokens for the /api/mcp endpoint, generated and revoked in-app. Only the
 // sha-256 hash is stored; the plaintext is shown once on creation. tokenPrefix is

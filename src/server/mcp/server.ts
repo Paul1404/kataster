@@ -1,20 +1,28 @@
-import { asc, eq, isNull, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
+import * as v from "valibot";
+import { FINOPS_SOURCE_IDS } from "../../lib/finops-sources";
 import {
   applyOwnerSuggestions,
   loadMarginReport,
   loadReadiness,
   loadStatements,
 } from "../billing/service";
+import { requireConnector } from "../connectors/registry";
 import { periodOf } from "../costs/margin";
 import { db } from "../db";
-import { assets, checkResults } from "../db/schema/assets";
+import { assets } from "../db/schema/assets";
 import { contractPositions, customerPricing, providerCosts } from "../db/schema/costs";
 import { customers } from "../db/schema/customers";
-import { incidents } from "../db/schema/incidents";
 import { type McpScope, mcpAuditLog } from "../db/schema/mcp-tokens";
 import { resources } from "../db/schema/resources";
+import { Hostname } from "../host-inventory/schema";
+import {
+  ingestHostSnapshot,
+  registerHostToken,
+  retireInfrastructure,
+} from "../host-inventory/service";
 import { createInvoice, listInvoices } from "../invoices/service";
-import { readWorkerHeartbeat } from "../queue/heartbeat";
+import { checksQueue } from "../queue/checks.queue";
 import { assignOwnerWithHistory } from "../resources/history";
 
 // A small, stateless MCP (Model Context Protocol) server exposing Kataster's inventory,
@@ -29,7 +37,7 @@ interface Tool {
   name: string;
   description: string;
   inputSchema: Json;
-  scope?: McpScope;
+  scope?: McpScope | "host";
   run(args: Json): Promise<unknown>;
 }
 
@@ -52,6 +60,131 @@ const int = (description?: string) => ({
 });
 
 const TOOLS: Tool[] = [
+  {
+    name: "list_sources",
+    description:
+      "Read configured inventory/cost sources with sync freshness. Configuration contains no credentials.",
+    inputSchema: obj({}),
+    async run() {
+      return db
+        .select({
+          id: assets.id,
+          name: assets.name,
+          connectorId: assets.connectorId,
+          enabled: assets.enabled,
+          config: assets.config,
+          lastStatus: assets.lastStatus,
+          lastCheckedAt: assets.lastCheckedAt,
+        })
+        .from(assets);
+    },
+  },
+  {
+    name: "refresh_sources",
+    description:
+      "Queue a fresh inventory/cost read for every enabled FinOps source. Does not modify provider infrastructure.",
+    scope: "write",
+    inputSchema: obj({}),
+    async run() {
+      const rows = await db.select().from(assets);
+      const ids = rows
+        .filter(
+          (a) => a.enabled && (FINOPS_SOURCE_IDS as readonly string[]).includes(a.connectorId),
+        )
+        .map((a) => a.id);
+      for (const id of ids) await checksQueue.add("check", { assetId: id });
+      return { queued: ids };
+    },
+  },
+  {
+    name: "configure_source",
+    description:
+      "Update non-secret settings of one existing inventory/cost source. Credentials are never accepted here.",
+    scope: "write",
+    inputSchema: obj({ id: str(), config: { type: "object" } }, ["id", "config"]),
+    async run(args) {
+      const input = v.parse(
+        v.strictObject({ id: v.string(), config: v.record(v.string(), v.unknown()) }),
+        args,
+      );
+      const row = await db.query.assets.findFirst({ where: eq(assets.id, input.id) });
+      if (!row) throw new Error("Datenquelle nicht gefunden");
+      const config = v.parse(
+        requireConnector(row.connectorId).configSchema,
+        input.config,
+      ) as Record<string, unknown>;
+      await db.update(assets).set({ config }).where(eq(assets.id, row.id));
+      return { id: row.id, config };
+    },
+  },
+  {
+    name: "register_host_token",
+    description:
+      "Register only a SHA-256 token hash for a single host inventory exporter. Never supply a raw secret.",
+    scope: "write",
+    inputSchema: obj(
+      { hostname: str("Host FQDN"), tokenHash: str("64-character lowercase SHA-256") },
+      ["hostname", "tokenHash"],
+    ),
+    async run(args) {
+      const input = v.parse(
+        v.strictObject({
+          hostname: Hostname,
+          tokenHash: v.pipe(v.string(), v.regex(/^[a-f0-9]{64}$/)),
+        }),
+        args,
+      );
+      return registerHostToken(input.hostname, input.tokenHash);
+    },
+  },
+  {
+    name: "sync_host_inventory",
+    description:
+      "Synchronize an authoritative secret-free host snapshot with Stalwart mailboxes, GitOps containers and B2 backup status. Preserves ownership and history. A host exporter may update only its own hostname.",
+    scope: "host",
+    inputSchema: obj(
+      {
+        snapshot: {
+          type: "object",
+          description: "HostSnapshot v1 described in docs/host-inventory.md",
+        },
+      },
+      ["snapshot"],
+    ),
+    async run(args) {
+      return ingestHostSnapshot(args.snapshot, "mcp:host-inventory");
+    },
+  },
+  {
+    name: "retire_infrastructure",
+    description:
+      "Decommission explicitly selected obsolete resources and disable their old checks. Keeps records, ownership, costs and check history. Requires a reason.",
+    scope: "write",
+    inputSchema: obj(
+      {
+        resourceIds: { type: "array", items: str() },
+        assetIds: { type: "array", items: str() },
+        reason: str(),
+      },
+      ["resourceIds", "assetIds", "reason"],
+    ),
+    async run(args) {
+      const input = v.parse(
+        v.strictObject({
+          resourceIds: v.pipe(v.array(v.string()), v.maxLength(500)),
+          assetIds: v.pipe(v.array(v.string()), v.maxLength(100)),
+          reason: v.pipe(v.string(), v.minLength(5), v.maxLength(500)),
+        }),
+        args,
+      );
+      return retireInfrastructure(
+        input.resourceIds,
+        input.assetIds,
+        "mcp:retirement",
+        input.reason,
+      );
+    },
+  },
   {
     name: "list_customers",
     description:
@@ -147,51 +280,24 @@ const TOOLS: Tool[] = [
       };
     },
   },
-  {
-    name: "list_incidents",
-    description:
-      "Open incidents (unhealthy assets) with the asset name and the latest check message.",
-    inputSchema: obj({}),
-    async run() {
-      return db
-        .select({
-          assetName: assets.name,
-          connectorId: assets.connectorId,
-          status: incidents.status,
-          startedAt: incidents.startedAt,
-          message: sql<
-            string | null
-          >`(select message from ${checkResults} where ${checkResults.assetId} = ${incidents}."asset_id" order by ${checkResults.checkedAt} desc limit 1)`,
-        })
-        .from(incidents)
-        .leftJoin(assets, eq(incidents.assetId, assets.id))
-        .where(isNull(incidents.endedAt))
-        .orderBy(asc(incidents.startedAt));
-    },
-  },
+
   {
     name: "overview",
     description:
       "High-level status: asset status counts, open incident count, resource total, and whether the worker is alive.",
     inputSchema: obj({}),
     async run() {
-      const [statusCounts, openInc, resourceTotal, heartbeat] = await Promise.all([
-        db
-          .select({ status: assets.lastStatus, count: sql<number>`count(*)::int` })
-          .from(assets)
-          .groupBy(assets.lastStatus),
-        db
-          .select({ n: sql<number>`count(*)::int` })
-          .from(incidents)
-          .where(isNull(incidents.endedAt)),
-        db.select({ n: sql<number>`count(*)::int` }).from(resources),
-        readWorkerHeartbeat(),
-      ]);
+      const summary = await loadMarginReport(periodOf(new Date()));
+      const inventory = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(resources)
+        .where(eq(resources.status, "active"));
       return {
-        assetStatus: Object.fromEntries(statusCounts.map((r) => [r.status, r.count])),
-        openIncidents: openInc[0]?.n ?? 0,
-        resources: resourceTotal[0]?.n ?? 0,
-        workerAlive: heartbeat != null && Date.now() - heartbeat < 60_000,
+        period: summary.period,
+        resources: inventory[0]?.count ?? 0,
+        totalCostCents: summary.totalCostCents,
+        totalChargeCents: summary.totalChargeCents,
+        totalMarginCents: summary.totalMarginCents,
       };
     },
   },
@@ -424,6 +530,13 @@ const TOOLS: Tool[] = [
 ];
 
 const TOOL_BY_NAME = new Map(TOOLS.map((t) => [t.name, t]));
+function toolAllowed(tool: Tool, context: McpRequestContext): boolean {
+  if (tool.scope === "host")
+    return context.scopes.includes("write") || context.scopes.some((s) => s.startsWith("host:"));
+  return tool.scope
+    ? context.scopes.includes(tool.scope)
+    : context.scopes.includes("read") || context.scopes.includes("write");
+}
 
 interface RpcRequest {
   jsonrpc?: string;
@@ -486,7 +599,7 @@ export async function handleMcpMessage(
         return ok({});
       case "tools/list":
         return ok({
-          tools: TOOLS.filter((t) => !t.scope || context.scopes.includes(t.scope)).map((t) => ({
+          tools: TOOLS.filter((t) => toolAllowed(t, context)).map((t) => ({
             name: t.name,
             description: t.description,
             inputSchema: t.inputSchema,
@@ -497,17 +610,22 @@ export async function handleMcpMessage(
         const tool = TOOL_BY_NAME.get(name);
         if (!tool) return fail(-32602, `Unknown tool: ${name}`);
         const args = (msg.params?.arguments as Json) ?? {};
-        if (tool.scope && !context.scopes.includes(tool.scope)) {
+        if (!toolAllowed(tool, context)) {
           return fail(-32001, `Token is missing the ${tool.scope} scope`);
         }
+        if (tool.scope === "host" && !context.scopes.includes("write")) {
+          const hostname = (args.snapshot as { hostname?: unknown } | undefined)?.hostname;
+          if (typeof hostname !== "string" || !context.scopes.includes(`host:${hostname}`))
+            return fail(-32001, "Host token cannot update another hostname");
+        }
         try {
-          if (tool.scope === "write") {
+          if (tool.scope) {
             // Fail closed. If the append-only attempt cannot be recorded, the
             // mutation is not allowed to run.
             await auditMutation(context, tool.name, "attempt", { arguments: args }, null);
           }
           const result = await tool.run(args);
-          if (tool.scope === "write") {
+          if (tool.scope) {
             await auditMutation(context, tool.name, "result", { result }, true).catch((error) => {
               console.error("[mcp] result audit failed", tool.name, (error as Error)?.message);
             });
@@ -516,7 +634,7 @@ export async function handleMcpMessage(
             content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           });
         } catch (error) {
-          if (tool.scope === "write") {
+          if (tool.scope) {
             await auditMutation(
               context,
               tool.name,
