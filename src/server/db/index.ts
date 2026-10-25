@@ -4,8 +4,6 @@ import * as schema from "./schema";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 3_000,
-  query_timeout: 2_000,
 });
 
 // Idle connections can close during database restarts. Keep readiness available

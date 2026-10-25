@@ -1,5 +1,15 @@
 import { Redis } from "ioredis";
-import { pool } from "../db";
+import { Pool } from "pg";
+
+// Bound readiness queries without imposing a timeout on business queries.
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 1,
+  connectionTimeoutMillis: 3_000,
+  query_timeout: 2_000,
+  idleTimeoutMillis: 5_000,
+});
+pool.on("error", () => {});
 
 export async function checkDependencies(): Promise<void> {
   // A dedicated bounded connection cannot queue probes behind worker commands.
