@@ -86,6 +86,7 @@
     "vitest": "^4.1.12"
   },
   "overrides": {
-    "ioredis": "5.10.1"
+    "ioredis": "5.10.1",
+    "@esbuild-kit/core-utils>esbuild": "0.28.2"
   }
 }
