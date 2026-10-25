@@ -2,6 +2,8 @@
 # Run only while building the immutable runtime image, after apt installation.
 set -eu
 export LC_ALL=C
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes --no-install-recommends
 selected=
 plan=$(mktemp)
 trap 'rm -f "$plan"' EXIT

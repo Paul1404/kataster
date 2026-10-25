@@ -18,8 +18,9 @@ RUN bun install --frozen-lockfile --production --omit=peer
 #    (different start commands per Railway service).
 FROM oven/bun:1.4.4 AS runtime-system
 USER root
+ARG RAILWAY_GIT_COMMIT_SHA=local
 COPY scripts/prune-runtime-packages.sh /prune-runtime-packages.sh
-RUN sh /prune-runtime-packages.sh && rm /prune-runtime-packages.sh
+RUN test -n "$RAILWAY_GIT_COMMIT_SHA" && sh /prune-runtime-packages.sh && rm /prune-runtime-packages.sh
 
 # Copy the pruned filesystem into a fresh layer so removed packages are not
 # carried in hidden base-image layers. Preserve Bun's runtime configuration.

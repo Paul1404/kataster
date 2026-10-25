@@ -43,7 +43,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build the production image
-        run: docker build --pull --tag production-security:${{ github.sha }} .
+        run: docker build --pull --build-arg RAILWAY_GIT_COMMIT_SHA=${{ github.sha }} --tag production-security:${{ github.sha }} .
       - name: Verify the pruned non-root runtime
         run: docker run --rm production-security:${{ github.sha }} bun scripts/check-runtime-packages.mjs
       - name: Exercise the real app and worker against isolated data services
