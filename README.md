@@ -17,8 +17,6 @@ prefix.
 contains no production inventory, customer database, or provider credentials.
 See [the publication boundary](docs/publication.md).
 
-![Kataster billing readiness, customer costs, prices, and margin](docs/screenshots/billing.png)
-
 ## From infrastructure to an invoice
 
 1. **Discover:** AWS, SSM, Mailcow, Hetzner Cloud, Railway, WordPress, Checkmk,
@@ -34,26 +32,11 @@ The background worker synchronizes inventory and provider costs. The German oper
 interface keeps inventory, source freshness, costs, and billing connected.
 MCP offers scoped access to the same register, with read-only tokens by default.
 
-## Screenshots
+## Local verification
 
-These are captures of the application, not design mockups. Every customer,
-domain, email address, and amount is fictional. The demo has 8 customers,
-32 resources, EUR 284 in monthly provider costs, and EUR 772 in contract charges.
-These are demonstration figures, not production totals or capacity claims.
-
-### Inventory and ownership
-
-![Kataster resource explorer with owners, types, and allocated costs](docs/screenshots/objects.png)
-
-### Operator overview
-
-![Kataster monthly financial overview, inventory, and ownership history](docs/screenshots/dashboard.png)
-
-The screenshot demo deliberately runs without a worker or external provider
-connections. Its worker and stale-check warnings show the real application
-behavior when monitoring is not running.
-
-See [the reproducible demo](docs/demo.md) for data and capture boundaries.
+A reproducible isolated demo uses fictional customers, example domains and
+synthetic costs. See [the demo instructions](docs/demo.md). Never publish a
+production inventory or real customer data in documentation captures.
 
 ## Stack
 
