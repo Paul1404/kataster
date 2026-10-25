@@ -83,7 +83,7 @@
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
     "vite-env-only": "^3.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "ioredis": "5.10.1"
