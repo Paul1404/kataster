@@ -16,7 +16,20 @@ RUN bun install --frozen-lockfile --production --omit=peer
 
 # 3. Runtime image. Same image runs both the web app and the worker
 #    (different start commands per Railway service).
-FROM oven/bun:1.4.4 AS runner
+FROM oven/bun:1.4.4 AS runtime-system
+USER root
+ARG RAILWAY_GIT_COMMIT_SHA=local
+COPY scripts/prune-runtime-packages.sh /prune-runtime-packages.sh
+RUN test -n "$RAILWAY_GIT_COMMIT_SHA" && sh /prune-runtime-packages.sh && rm /prune-runtime-packages.sh
+
+# Copy the pruned filesystem into a fresh layer so removed packages are not
+# carried in hidden base-image layers. Preserve Bun's runtime configuration.
+FROM scratch AS runner
+COPY --from=runtime-system / /
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bun-node-fallback-bin \
+    BUN_RUNTIME_TRANSPILER_CACHE_PATH=0 \
+    BUN_INSTALL_BIN=/usr/local/bin
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 WORKDIR /app
 ENV NODE_ENV=production
 # Both services idle most of the time: trade a little GC frequency for a
