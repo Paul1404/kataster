@@ -46,12 +46,12 @@
     "@tanstack/react-router-ssr-query": "^1.167.3",
     "@tanstack/react-start": "^1.169.3",
     "better-auth": "^1.7.14",
-    "bullmq": "^6.3.11",
+    "bullmq": "^6.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "drizzle-valibot": "^0.4.2",
-    "ioredis": "5.10.1",
+    "ioredis": "6.0.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
     "pg": "^8.23.1",
@@ -87,7 +87,7 @@
     "vitest": "^4.1.12"
   },
   "overrides": {
-    "ioredis": "5.10.1",
+    "ioredis": "6.0.0",
     "@esbuild-kit/core-utils>esbuild": "0.28.2"
   }
 }
