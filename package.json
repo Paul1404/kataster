@@ -53,7 +53,7 @@
     "drizzle-valibot": "^0.4.2",
     "ioredis": "6.0.0",
     "leaflet": "^1.9.4",
-    "lucide-react": "^1.21.0",
+    "lucide-react": "^1.69.0",
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
