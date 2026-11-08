@@ -1,5 +1,7 @@
 # Repository guidance
 
+> Production runs on Vertex RKE2 via Fleet, with separate app and worker, PostgreSQL and Redis on Longhorn. The source image is published to GHCR after main CI and security scanning. Railway deployment notes below describe the retired hosting setup.
+
 This is the canonical instruction file for Kataster. The Railway project is
 `kataster`, with `kataster-app`, `kataster-worker`, `kataster-postgres`, and
 `kataster-redis`. Environment variables retain the `LFIO_` compatibility prefix.
