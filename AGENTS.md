@@ -1,10 +1,10 @@
 # Repository guidance
 
-> Production runs on Vertex RKE2 via Fleet, with separate app and worker, PostgreSQL and Redis on Longhorn. The source image is published to GHCR after main CI and security scanning. Railway deployment notes below describe the retired hosting setup.
+> Production runs on Vertex RKE2 via Fleet, with separate app and worker, PostgreSQL and Redis on Longhorn. The source image is published to GHCR after main CI and security scanning. Railway-specific material is historical.
 
-This is the canonical instruction file for Kataster. The Railway project is
-`kataster`, with `kataster-app`, `kataster-worker`, `kataster-postgres`, and
-`kataster-redis`. Environment variables retain the `LFIO_` compatibility prefix.
+This is the canonical instruction file for Kataster. Vertex runs the
+`kataster-app`, `kataster-worker`, `kataster-postgres`, and `kataster-redis`
+workloads. Environment variables retain the `LFIO_` compatibility prefix.
 Claude Code loads this file through `CLAUDE.md`.
 
 ## Start here
@@ -14,7 +14,7 @@ Claude Code loads this file through `CLAUDE.md`.
 - Use the repository's Bun and TanStack stack. Do not migrate frameworks or
   package managers as unrelated cleanup.
 - Verify current documentation before changing fast-moving dependencies or
-  Railway behavior.
+  deployment behavior.
 - Keep changes focused on the requested outcome.
 
 ## Product and architecture
@@ -27,8 +27,8 @@ customer owns each one, what it costs, and what is invoiced for it.
   health check. `kind` is `probe` (one service's health) or `source` (a provider
   account sync feeding inventory and cost); the Datenquellen page exposes only FinOps inventory/cost sources.
 - Credentials are encrypted at rest. Never log or expose decrypted values.
-- The web service and BullMQ worker share one image but have separate Railway
-  start commands and service settings.
+- The web service and BullMQ worker share one image but have separate Kubernetes
+  start commands and deployment settings.
 - Server-only code stays under `src/server/`. Code under `src/server/` and
   `src/worker/` must import by relative path, never through the `@/` alias: the
   worker runs from source and the runtime image ships no tsconfig, so an alias
@@ -79,7 +79,7 @@ customer owns each one, what it costs, and what is invoiced for it.
   and oRPC error messages that reach a toast) is written in German. Code,
   identifiers, URLs, log lines, and MCP tool names stay English. Format
   numbers, currency, and dates through `src/lib/format.ts` (de-DE).
-- Resource footprint matters: the Railway bill is mostly idle memory. The
+- Resource footprint matters on the shared cluster. The
   image runs Bun with `BUN_OPTIONS=--smol`; connectors declare a
   `defaultIntervalSeconds` (inventory/cost connectors 15 to 30 min, health
   probes 60 s). Do not add per-minute polling of provider APIs, and drop heavy
@@ -204,7 +204,7 @@ against a real local TLS server; a rejected connection must actually reach it.
 
 ## Main-only branch lifecycle and security reporting
 
-`main` is the only retained local and remote branch for this active Railway
+`main` is the only retained local and remote branch for this active
 repository. Temporary PR branches are allowed only while work is in progress.
 Keep required checks and branch protections; never bypass them to avoid a branch.
 Before finishing, merge validated work, delete the remote and local task branches,
@@ -223,7 +223,7 @@ credentials, production records and personal data from public issues and commits
 
 ## Production security gates
 
-Railway waits for successful GitHub workflows on `main`. Keep an always-running
+Verified images are published only after successful GitHub workflows on `main`. Keep an always-running
 push workflow and do not cancel its main-branch runs. PR branch cleanup never
 justifies bypassing CI. Public repositories also enforce CodeQL results on main.
 Container security builds the production image and scans OS and library packages.

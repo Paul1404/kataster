@@ -1,6 +1,6 @@
 # Kataster FinOps
 
-> Production runs on Vertex RKE2 via Fleet, with separate app and worker, PostgreSQL and Redis on Longhorn. The source image is published to GHCR after main CI and security scanning. Railway deployment notes below describe the retired hosting setup.
+> Production runs on Vertex RKE2 via Fleet, with separate app and worker, PostgreSQL and Redis on Longhorn. The source image is published to GHCR after main CI and security scanning. Railway-specific configuration is historical.
 
 ![Quality](https://github.com/Paul1404/kataster/actions/workflows/quality.yml/badge.svg)
 [![License: MIT](https://img.shields.io/badge/license-MIT-38b2ac)](LICENSE)
@@ -42,7 +42,7 @@ production inventory or real customer data in documentation captures.
 
 ## Stack
 
-TanStack Start (Vite) + Router + Query + Form, Tailwind v4 + shadcn/ui, oRPC, better-auth, Drizzle ORM + PostgreSQL, BullMQ + Redis, Bun. Biome + Vitest. Deployed on Railway.
+TanStack Start (Vite) + Router + Query + Form, Tailwind v4 + shadcn/ui, oRPC, better-auth, Drizzle ORM + PostgreSQL, BullMQ + Redis, Bun. Biome + Vitest. Deployed on Vertex RKE2 through Fleet.
 
 ## How it works
 
@@ -98,13 +98,17 @@ claude mcp add kataster --transport http https://<your-app>/api/mcp \
 
 ## Deploy
 
-Railway, via the multi-stage `Dockerfile`. The app and worker run the same image with different start commands. Postgres and Redis are Railway services wired in with reference variables. Per-service start, migration, and healthcheck settings are configured in Railway because the shared image has different web and worker requirements.
+Kataster runs on Vertex RKE2 through Fleet. Main-branch CI and security scanning
+precede publication of the Docker image to GHCR; a verified digest is promoted
+to the private Fleet configuration. The app and BullMQ worker run the same
+image as separate workloads with their own start commands. PostgreSQL and Redis
+use Longhorn-backed volumes.
 
-The web service runs `bun run server.ts`, migrates with
-`bun run db:migrate:prod` before deployment, and uses `/api/health`. The worker
-runs `bun run src/worker/index.ts`. Preserve existing database volumes and the
-encryption key during upgrades; replacing the key makes stored credentials
-unreadable.
+The app runs `bun run server.ts`, with `bun run db:migrate:prod` in an init
+container before startup. The worker runs `bun run src/worker/index.ts`.
+`/api/health` checks application readiness. Runtime credentials are provisioned
+outside Git; preserve existing database volumes and the encryption key during
+upgrades. Railway configuration is historical and is not the production path.
 
 ## Tests
 
