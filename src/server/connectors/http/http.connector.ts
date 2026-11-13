@@ -50,10 +50,15 @@ export function readCertificate(
           .split(",")
           .map((s: string) => s.trim().replace(/^DNS:/i, ""))
           .filter(Boolean);
-        const issuer = cert.issuer?.O ?? cert.issuer?.CN ?? null;
+        const issuerValue = cert.issuer?.O ?? cert.issuer?.CN;
+        const issuer = Array.isArray(issuerValue)
+          ? (issuerValue[0] ?? null)
+          : (issuerValue ?? null);
+        const subject = cert.subject?.CN;
+        const commonName = Array.isArray(subject) ? (subject[0] ?? host) : (subject ?? host);
         const notAfter = cert.valid_to ? new Date(cert.valid_to) : null;
         finish({
-          commonName: cert.subject?.CN ?? host,
+          commonName,
           sans,
           issuer,
           notAfter: notAfter && !Number.isNaN(notAfter.getTime()) ? notAfter.toISOString() : null,
