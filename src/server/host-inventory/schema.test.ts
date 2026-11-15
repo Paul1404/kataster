@@ -24,6 +24,14 @@ const snapshot = {
   },
 };
 describe("authoritative host inventory", () => {
+  it("represents a physical node without inventing a backup", () => {
+    const physical = parseHostSnapshot(
+      { ...snapshot, mailboxes: [], containers: [], backup: null },
+      now,
+    );
+    expect(physical.backup).toBeNull();
+    expect(summarizeHost(physical, now).raw.backup).toBeNull();
+  });
   it("rejects stale, future, duplicate and secret-bearing snapshots before reconciliation", () => {
     for (const change of [
       { observedAt: "2026-10-24T12:00:00Z" },
