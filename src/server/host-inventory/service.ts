@@ -123,7 +123,7 @@ export async function ingestHostSnapshot(input: unknown, actor: string) {
       [asset] = await tx
         .insert(assets)
         .values({
-          name: `${snapshot.hostname}: Stalwart, GitOps und B2`,
+          name: `Hostinventar ${snapshot.hostname}`,
           connectorId: "managed-host",
           target: snapshot.hostname,
           resourceId: hostId,
@@ -212,20 +212,23 @@ export async function ingestHostSnapshot(input: unknown, actor: string) {
         metadata: { ...container, source: "managed-host", hostname: snapshot.hostname },
       });
     }
-    const backupId = await upsert({
-      type: "backup",
-      provider: "backblaze",
-      externalId: `${snapshot.hostname}/mail`,
-      name: `B2-Backup ${snapshot.hostname}`,
-      ownerCustomerId: hostOwner,
-      parentResourceId: hostId,
-      metadata: {
-        ...snapshot.backup,
-        encrypted: true,
-        source: "managed-host",
-        hostname: snapshot.hostname,
-      },
-    });
+    let backupId: string | null = null;
+    if (snapshot.backup) {
+      backupId = await upsert({
+        type: "backup",
+        provider: "backblaze",
+        externalId: `${snapshot.hostname}/mail`,
+        name: `B2-Backup ${snapshot.hostname}`,
+        ownerCustomerId: hostOwner,
+        parentResourceId: hostId,
+        metadata: {
+          ...snapshot.backup,
+          encrypted: true,
+          source: "managed-host",
+          hostname: snapshot.hostname,
+        },
+      });
+    }
     const stale = all.filter(
       (r) =>
         r.parentResourceId === hostId &&
@@ -252,7 +255,7 @@ export async function ingestHostSnapshot(input: unknown, actor: string) {
         `Backblaze B2 ${snapshot.hostname} (Speicherschätzung)`,
       ],
     ] as const) {
-      if (amountCents == null) continue;
+      if (amountCents == null || resourceId == null) continue;
       await tx
         .insert(providerCosts)
         .values({

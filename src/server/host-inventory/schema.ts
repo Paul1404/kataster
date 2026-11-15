@@ -32,12 +32,14 @@ export const HostSnapshotSchema = v.strictObject({
     ),
     v.maxLength(500),
   ),
-  backup: v.strictObject({
-    lastSuccessAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
-    snapshotId: v.nullable(v.pipe(v.string(), v.regex(/^[a-f0-9]{8,64}$/))),
-    accountCount: bytes,
-    packedBytes: bytes,
-  }),
+  backup: v.nullable(
+    v.strictObject({
+      lastSuccessAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
+      snapshotId: v.nullable(v.pipe(v.string(), v.regex(/^[a-f0-9]{8,64}$/))),
+      accountCount: bytes,
+      packedBytes: bytes,
+    }),
+  ),
   hostMonthlyCents: v.optional(bytes),
   backupMonthlyCents: v.optional(bytes),
 });

@@ -37,6 +37,9 @@ Inventarliste übertragen werden. Der Export schreibt nur Zähler in sein Journa
 `HostSnapshotSchema` in `src/server/host-inventory/schema.ts` ist der strikte
 Laufzeitvertrag. Unbekannte Felder, doppelte Identitäten, ältere als 30 Minuten
 alte Eingaben und mehr als fünf Minuten zukünftige Uhren werden abgewiesen.
+Ein physischer Clusterknoten ohne eigenen Mailbackupbericht sendet `backup: null`.
+Der Abgleich legt dafür kein B2-Backupobjekt und keinen Backblaze-Kostenpool an.
+Vorhandene Backupobjekte bleiben über die normale Historie erhalten.
 Ein Hostbericht darf nur neuere Beobachtungen ersetzen. Der Abgleich läuft unter
 einer Host-Sperre in einer Datenbanktransaktion. Der Worker prüft die Frische des
 letzten Berichts; er gibt gecachte Daten nicht als frisch entdeckte Objekte aus.
